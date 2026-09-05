@@ -42,7 +42,7 @@ public class BrowserCaptureActivity extends Activity {
 
     @Override protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);getWindow().setStatusBarColor(Ui.BG);getWindow().setNavigationBarColor(Ui.BG);
-        sourceUrl=getIntent().getStringExtra(EXTRA_URL);tikTokCleanMode=getIntent().getBooleanExtra(EXTRA_TIKTOK_CLEAN,false);if(sourceUrl==null||(!sourceUrl.startsWith("http://")&&!sourceUrl.startsWith("https://")))sourceUrl="https://www.google.com";
+        sourceUrl=getIntent().getStringExtra(EXTRA_URL);if(sourceUrl==null||(!sourceUrl.startsWith("http://")&&!sourceUrl.startsWith("https://")))sourceUrl="https://www.google.com";tikTokCleanMode=getIntent().getBooleanExtra(EXTRA_TIKTOK_CLEAN,false)||isTikTokUrl(sourceUrl);
         setContentView(buildUi());setupWebView();address.setText(sourceUrl);webView.loadUrl(sourceUrl);
     }
 
@@ -77,7 +77,7 @@ public class BrowserCaptureActivity extends Activity {
         });
     }
 
-    private void loadAddress(){String u=address.getText()==null?"":address.getText().toString().trim();if(!u.startsWith("http://")&&!u.startsWith("https://"))u="https://"+u;lastMediaUrl="";autoTried=false;webView.loadUrl(u);}
+    private void loadAddress(){String u=address.getText()==null?"":address.getText().toString().trim();if(!u.startsWith("http://")&&!u.startsWith("https://"))u="https://"+u;lastMediaUrl="";autoTried=false;tikTokCleanMode=isTikTokUrl(u)||getIntent().getBooleanExtra(EXTRA_TIKTOK_CLEAN,false);webView.loadUrl(u);}
 
     private void captureCurrentVideo(boolean automatic){
         status.setText(automatic?"فحص مصدر الفيديو تلقائيًا…":"جاري فحص مصدر الفيديو…");
@@ -87,10 +87,11 @@ public class BrowserCaptureActivity extends Activity {
 
     private boolean looksMedia(String u){String l=u.toLowerCase(Locale.ROOT);return l.matches(".*\\.(mp4|m4v|webm|mov|mkv|avi|mp3|m4a|aac)(\\?.*)?$")||l.contains(".m3u8")||l.contains("mime=video")||l.contains("video_mp4")||l.contains("mime_type=video_")||l.contains("/video/tos/");}
     private boolean looksTikTokCleanMedia(String u){if(!isHttp(u))return false;String l=u.toLowerCase(Locale.ROOT);boolean cdn=l.contains("tiktokcdn")||l.contains("tiktokv")||l.contains("bytevc")||l.contains("tos-maliva")||l.contains("tos-useast")||l.contains("/video/tos/")||l.contains("mime_type=video_")||l.contains("video_mp4");boolean blocked=l.contains("watermark=1")||l.contains("watermark%3d1")||l.contains("downloadaddr")||l.contains("/download/");return cdn&&!blocked&&!l.contains(".m3u8");}
+    private boolean isTikTokUrl(String u){if(!isHttp(u))return false;String l=u.toLowerCase(Locale.ROOT);return l.contains("tiktok.com")||l.contains("tiktokv.com")||l.contains("tiktokcdn.com");}
     private boolean isHttp(String s){return s!=null&&(s.startsWith("http://")||s.startsWith("https://"));}
     private String decodeJsString(String value){if(value==null||"null".equals(value)||"undefined".equals(value))return"";try{return new JSONArray("["+value+"]").optString(0,"");}catch(Exception e){return value.replace("\\\"","\"").replace("\\/","/").replaceAll("^\"|\"$","");}}
 
-    private void enqueue(String url,String name,String referer){try{DownloadManager.Request request=new DownloadManager.Request(Uri.parse(url));request.setTitle(name);request.setDescription("Download Hub Premium");request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);if(AppPrefs.wifiOnly(this))request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI);else{request.setAllowedOverMetered(true);request.setAllowedOverRoaming(true);}request.addRequestHeader("User-Agent",NetUtil.USER_AGENT);String cookies=CookieManager.getInstance().getCookie(referer==null?url:referer);if(cookies!=null&&!cookies.isEmpty())request.addRequestHeader("Cookie",cookies);if(referer!=null&&!referer.isEmpty())request.addRequestHeader("Referer",referer);request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,"DownloadHub/"+DownloadUtil.sanitizeFileName(name));DownloadManager dm=(DownloadManager)getSystemService(Context.DOWNLOAD_SERVICE);long id=dm.enqueue(request);DownloadStore.add(this,id,name,url);HistoryStore.add(this,webView.getUrl(),"Browser Capture");Toast.makeText(this,"بدأ التحميل",Toast.LENGTH_SHORT).show();}catch(Exception e){status.setText("تعذر بدء التحميل: "+(e.getMessage()==null?"خطأ":e.getMessage()));}}
+    private void enqueue(String url,String name,String referer){try{DownloadManager.Request request=new DownloadManager.Request(Uri.parse(url));request.setTitle(name);request.setDescription("Download Hub Premium");request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);if(AppPrefs.wifiOnly(this))request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI);else{request.setAllowedOverMetered(true);request.setAllowedOverRoaming(true);}request.addRequestHeader("User-Agent",NetUtil.USER_AGENT);String cookies=CookieManager.getInstance().getCookie(referer==null?url:referer);if(cookies!=null&&!cookies.isEmpty())request.addRequestHeader("Cookie",cookies);if(referer!=null&&!referer.isEmpty())request.addRequestHeader("Referer",referer);request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,"DownloadHub/"+DownloadUtil.sanitizeFileName(name));DownloadManager dm=(DownloadManager)getSystemService(Context.DOWNLOAD_SERVICE);long id=dm.enqueue(request);DownloadStore.add(this,id,name,url);HistoryStore.add(this,webView.getUrl(),tikTokCleanMode?"TikTok Clean Capture":"Browser Capture");Toast.makeText(this,"بدأ التحميل",Toast.LENGTH_SHORT).show();}catch(Exception e){status.setText("تعذر بدء التحميل: "+(e.getMessage()==null?"خطأ":e.getMessage()));}}
 
     @Override public void onBackPressed(){if(webView!=null&&webView.canGoBack())webView.goBack();else super.onBackPressed();}
     @Override protected void onDestroy(){if(webView!=null){webView.stopLoading();webView.destroy();}super.onDestroy();}
