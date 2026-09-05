@@ -36,7 +36,7 @@ public class TemplateEditorActivity extends Activity {
     @Override protected void onCreate(Bundle b){
         super.onCreate(b);getWindow().setStatusBarColor(Ui.BG);getWindow().setNavigationBarColor(Ui.BG);
         loadProject();setContentView(buildUi());syncFields();
-        if(getIntent().getBooleanExtra("pick_media",false))preview.postDelayed(v->pickMedia(),350);
+        if(getIntent().getBooleanExtra("pick_media",false))preview.postDelayed(()->pickMedia(),350);
     }
 
     private void loadProject(){
