@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "updated": "2026-09-05",
+  "category": "islamic",
+  "templates": [
+    {
+      "id": "islamic-online-alazhar-dhikr",
+      "name": "ذكر هادئ في الأزهر",
+      "description": "فيديو حقيقي من مسجد الأزهر مع نص ذكر جاهز للتعديل.",
+      "hook": "اذكر الله",
+      "body": "أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ",
+      "cta": "اجعل لسانك رطبًا بذكر الله",
+      "hashtags": "#أذكار #استغفار #اسلاميات #ذكر",
+      "durationSec": 11,
+      "approxSizeMb": 3.1,
+      "mediaUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Muslim%20playing%20with%20kitten%20and%20praying%20beads%20in%20Al%20Azhar%20mosque%20in%20Cairo.webm",
+      "mediaExt": ".webm",
+      "credit": "Daniel Brvnistan / Wikimedia Commons",
+      "license": "CC BY-SA 4.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Muslim_playing_with_kitten_and_praying_beads_in_Al_Azhar_mosque_in_Cairo.webm"
+    },
+    {
+      "id": "islamic-online-mecca-dua",
+      "name": "دعاء من مكة",
+      "description": "خلفية فيديو حقيقية من المسجد الحرام مع دعاء جاهز.",
+      "hook": "دعاء اليوم",
+      "body": "رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ",
+      "cta": "آمين يا رب العالمين",
+      "hashtags": "#دعاء #مكة #المسجد_الحرام #اسلاميات",
+      "durationSec": 15,
+      "approxSizeMb": 2.6,
+      "mediaUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Great%20Mosque%20of%20Mecca%20%28video%29%20-%20Feb%204%2C%202010.webm",
+      "mediaExt": ".webm",
+      "credit": "Habib-Ur-Rehman Janjua / Wikimedia Commons",
+      "license": "CC BY 3.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Great_Mosque_of_Mecca_(video)_-_Feb_4,_2010.webm"
+    },
+    {
+      "id": "islamic-online-aqsa-reminder",
+      "name": "تذكير من الأقصى",
+      "description": "فيديو حقيقي للمسجد الأقصى مع رسالة تذكير قابلة للتعديل.",
+      "hook": "لا تنسَ الدعاء",
+      "body": "اللهم أصلح قلوبنا واغفر لنا وارحمنا واهدنا لما تحب وترضى",
+      "cta": "شارك الخير",
+      "hashtags": "#الأقصى #دعاء #اسلاميات #تذكير",
+      "durationSec": 18,
+      "approxSizeMb": 48.4,
+      "mediaUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Al-Masjid%20Al-Aqsa%28Bayt%20al-Muqaddas%29.webm",
+      "mediaExt": ".webm",
+      "credit": "Wikimedia Commons contributor",
+      "license": "CC BY 3.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Al-Masjid_Al-Aqsa(Bayt_al-Muqaddas).webm"
+    },
+    {
+      "id": "islamic-online-sunrise-salah",
+      "name": "صباح بالصلاة على النبي ﷺ",
+      "description": "خلفية شروق حقيقية خفيفة مناسبة لريل صباحي.",
+      "hook": "ابدأ يومك بالصلاة على النبي ﷺ",
+      "body": "اللَّهُمَّ صَلِّ وَسَلِّمْ وَبَارِكْ عَلَى نَبِيِّنَا مُحَمَّدٍ ﷺ",
+      "cta": "صلِّ عليه ﷺ",
+      "hashtags": "#الصلاة_على_النبي #صباح_الخير #اسلاميات #ذكر",
+      "durationSec": 8,
+      "approxSizeMb": 0.4,
+      "mediaUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Beauty%20of%20Sunrise.webm",
+      "mediaExt": ".webm",
+      "credit": "Wikimedia Commons contributor",
+      "license": "CC BY-SA 4.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Beauty_of_Sunrise.webm"
+    }
+  ]
+}
