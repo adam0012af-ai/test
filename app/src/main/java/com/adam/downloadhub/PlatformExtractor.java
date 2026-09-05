@@ -25,7 +25,7 @@ public final class PlatformExtractor {
             try {
                 return extractTikTokWithTikwm(inputUrl);
             } catch (Exception ignored) {
-                // TikTok changes frequently. Fall back to page parsing and finally BrowserCaptureActivity.
+                // TikTok changes frequently. Fall back to clean playback fields, then BrowserCaptureActivity.
             }
         }
 
@@ -37,8 +37,10 @@ public final class PlatformExtractor {
         List<Pattern> patterns = new ArrayList<>();
 
         if (isTikTok(host)) {
-            patterns.add(Pattern.compile("\\\"downloadAddr\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
+            // Prefer playback addresses. Do NOT prefer downloadAddr because that path commonly carries the watermark version.
             patterns.add(Pattern.compile("\\\"playAddr\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
+            patterns.add(Pattern.compile("\\\"playAddr\\\"\\s*:\\s*\\{.{0,2200}?\\\"src\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
+            patterns.add(Pattern.compile("\\\"PlayAddr\\\"\\s*:\\s*\\{.{0,4200}?\\\"UrlList\\\"\\s*:\\s*\\[\\s*\\\"([^\\\"]+)\\\"", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
             patterns.add(Pattern.compile("\\\"play_addr\\\"\\s*:\\s*\\{.{0,2200}?\\\"url_list\\\"\\s*:\\s*\\[\\s*\\\"([^\\\"]+)\\\"", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
         }
 
@@ -65,6 +67,7 @@ public final class PlatformExtractor {
             while (m.find()) {
                 String candidate = normalizeUrl(m.group(1), finalUrl);
                 if (!isDownloadableHttpVideo(candidate)) continue;
+                if (isTikTok(host) && looksWatermarkedTikTokCandidate(candidate)) continue;
 
                 String title = extractTitle(html);
                 String defaultName = platformDefaultName(host);
@@ -92,9 +95,9 @@ public final class PlatformExtractor {
         String title = data.optString("title", "").replaceAll("\\s+", " ").trim();
         if (title.length() > 80) title = title.substring(0, 80).trim();
         String name;
-        if (!title.isEmpty()) name = DownloadUtil.sanitizeFileName(title) + ".mp4";
-        else if (!id.isEmpty()) name = "TikTok_" + DownloadUtil.sanitizeFileName(id) + ".mp4";
-        else name = "TikTok_video.mp4";
+        if (!title.isEmpty()) name = "TikTok_clean_" + DownloadUtil.sanitizeFileName(title) + ".mp4";
+        else if (!id.isEmpty()) name = "TikTok_clean_" + DownloadUtil.sanitizeFileName(id) + ".mp4";
+        else name = "TikTok_clean_video.mp4";
 
         return new VideoCandidate(video, name, "https://www.tikwm.com/");
     }
@@ -114,7 +117,7 @@ public final class PlatformExtractor {
     }
 
     private static String platformDefaultName(String host) {
-        if (isTikTok(host)) return "TikTok_video.mp4";
+        if (isTikTok(host)) return "TikTok_clean_video.mp4";
         if (host.contains("instagram")) return "Instagram_video.mp4";
         if (host.contains("facebook") || host.equals("fb.watch")) return "Facebook_video.mp4";
         if (host.equals("x.com") || host.contains("twitter")) return "X_video.mp4";
@@ -169,6 +172,13 @@ public final class PlatformExtractor {
                 .replace("&#39;", "'")
                 .replace("&lt;", "<")
                 .replace("&gt;", ">");
+    }
+
+    private static boolean looksWatermarkedTikTokCandidate(String url) {
+        if (url == null) return false;
+        String lower = url.toLowerCase(Locale.ROOT);
+        return lower.contains("watermark=1") || lower.contains("watermark%3d1")
+                || lower.contains("downloadaddr") || lower.contains("/download/");
     }
 
     private static boolean isDownloadableHttpVideo(String url) {
