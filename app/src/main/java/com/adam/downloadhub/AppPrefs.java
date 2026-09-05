@@ -12,6 +12,9 @@ public final class AppPrefs {
     private static final String PRIVATE_MODE = "private_mode";
     private static final String AUTO_RETRY = "auto_retry";
     private static final String DEFAULT_MODE = "default_mode";
+    private static final String DUPLICATE_SHIELD = "duplicate_shield";
+    private static final String LINK_CLEANER = "link_cleaner";
+    private static final String DOWNLOAD_PROFILE = "download_profile";
 
     private AppPrefs() {}
 
@@ -36,6 +39,18 @@ public final class AppPrefs {
 
     public static boolean autoRetry(Context c) { return p(c).getBoolean(AUTO_RETRY, true); }
     public static void setAutoRetry(Context c, boolean v) { p(c).edit().putBoolean(AUTO_RETRY, v).apply(); }
+
+    public static boolean duplicateShield(Context c) { return p(c).getBoolean(DUPLICATE_SHIELD, true); }
+    public static void setDuplicateShield(Context c, boolean v) { p(c).edit().putBoolean(DUPLICATE_SHIELD, v).apply(); }
+
+    public static boolean linkCleaner(Context c) { return p(c).getBoolean(LINK_CLEANER, true); }
+    public static void setLinkCleaner(Context c, boolean v) { p(c).edit().putBoolean(LINK_CLEANER, v).apply(); }
+
+    public static String downloadProfile(Context c) { return p(c).getString(DOWNLOAD_PROFILE, "balanced"); }
+    public static void setDownloadProfile(Context c, String v) {
+        if (!"max".equals(v) && !"balanced".equals(v) && !"saver".equals(v)) v = "balanced";
+        p(c).edit().putString(DOWNLOAD_PROFILE, v).apply();
+    }
 
     public static String defaultMode(Context c) { return p(c).getString(DEFAULT_MODE, "ask"); }
     public static void setDefaultMode(Context c, String v) {
