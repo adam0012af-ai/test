@@ -98,11 +98,17 @@ public final class CreatorProject implements Serializable {
             trimStartMs = first.trimStartMs;
             trimEndMs = first.trimEndMs;
             sourceVolume = first.volume;
+        } else {
+            sourceUri = "";
+            trimStartMs = 0;
+            trimEndMs = 0;
+            sourceVolume = 100;
         }
     }
 
     public JSONObject toJson() {
-        ensureClips();
+        if (clips == null) clips = new ArrayList<>();
+        syncPrimarySource();
         JSONObject o = new JSONObject();
         try {
             o.put("id", safe(id));
@@ -188,7 +194,15 @@ public final class CreatorProject implements Serializable {
             }
         }
         p.updatedAt = o.optLong("updatedAt", System.currentTimeMillis());
-        p.ensureClips();
+        if (p.clips.isEmpty() && p.sourceUri != null && !p.sourceUri.trim().isEmpty()) {
+            EditorClip c = new EditorClip(p.sourceUri);
+            c.trimStartMs = p.trimStartMs;
+            c.trimEndMs = p.trimEndMs;
+            c.volume = p.sourceVolume;
+            p.clips.add(c);
+        }
+        if (!p.clips.isEmpty() && p.selectedClipIndex >= p.clips.size()) p.selectedClipIndex = p.clips.size()-1;
+        p.syncPrimarySource();
         return p;
     }
 
