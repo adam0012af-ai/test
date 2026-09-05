@@ -4,7 +4,9 @@ import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -65,6 +67,20 @@ public final class Ui {
         return d;
     }
 
+    private static Drawable ripple(Drawable content, int rippleColor) {
+        return new RippleDrawable(ColorStateList.valueOf(rippleColor), content, null);
+    }
+
+    private static void finishButton(Button b) {
+        b.setStateListAnimator(null);
+        b.setSoundEffectsEnabled(true);
+        b.setHapticFeedbackEnabled(true);
+        b.setClickable(true);
+        b.setFocusable(true);
+        b.setMinHeight(0);
+        b.setMinWidth(0);
+    }
+
     public static TextView text(Context c, String value, int sp, int color, boolean bold) {
         TextView t = new TextView(c);
         t.setText(value);
@@ -92,15 +108,15 @@ public final class Ui {
         b.setGravity(Gravity.CENTER);
         b.setPadding(dp(c, 12), 0, dp(c, 12), 0);
         b.setBackgroundTintList(ColorStateList.valueOf(Color.TRANSPARENT));
-        b.setBackground(gradient(BLUE_2, BLUE, 17, c));
-        b.setStateListAnimator(null);
+        b.setBackground(ripple(gradient(BLUE_2, BLUE, 17, c), Color.argb(70, 255, 255, 255)));
+        finishButton(b);
         return b;
     }
 
     public static Button accent(Context c, String label) {
         Button b = primary(c, label);
         b.setTextColor(Color.rgb(3, 25, 39));
-        b.setBackground(gradient(Color.rgb(63, 235, 255), CYAN, 17, c));
+        b.setBackground(ripple(gradient(Color.rgb(63, 235, 255), CYAN, 17, c), Color.argb(85, 255, 255, 255)));
         return b;
     }
 
@@ -113,15 +129,15 @@ public final class Ui {
         b.setGravity(Gravity.CENTER);
         b.setPadding(dp(c, 10), 0, dp(c, 10), 0);
         b.setBackgroundTintList(ColorStateList.valueOf(Color.TRANSPARENT));
-        b.setBackground(bordered(SURFACE_2, BORDER, 1, 15, c));
-        b.setStateListAnimator(null);
+        b.setBackground(ripple(bordered(SURFACE_2, BORDER, 1, 15, c), Color.argb(60, 24, 216, 255)));
+        finishButton(b);
         return b;
     }
 
     public static Button ghost(Context c, String label) {
         Button b = secondary(c, label);
         b.setTextColor(CYAN);
-        b.setBackground(bordered(Color.TRANSPARENT, BORDER_SOFT, 1, 14, c));
+        b.setBackground(ripple(bordered(Color.TRANSPARENT, BORDER_SOFT, 1, 14, c), Color.argb(75, 24, 216, 255)));
         return b;
     }
 
