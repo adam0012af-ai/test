@@ -9,7 +9,6 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
-import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,7 +19,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.util.List;
+import java.io.InputStream;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -59,7 +58,7 @@ public class MainActivity extends Activity {
         title.setGravity(Gravity.CENTER_HORIZONTAL);
         root.addView(title);
 
-        TextView sub = text("تحميل روابط مباشرة + استخراج فيديو من المنصات + فرز M3U", 14,
+        TextView sub = text("تحميل روابط مباشرة + استخراج فيديو من المنصات + فرز M3U الضخم", 14,
                 Color.rgb(170, 180, 195), false);
         sub.setGravity(Gravity.CENTER_HORIZONTAL);
         LinearLayout.LayoutParams subLp = matchWrap();
@@ -81,7 +80,7 @@ public class MainActivity extends Activity {
         root.addView(extractBtn, buttonLp());
 
         root.addView(section("M3U / M3U8"));
-        m3uUrl = input("ضع رابط M3U / M3U8");
+        m3uUrl = input("ضع رابط M3U / M3U8 مهما كان حجمه");
         root.addView(m3uUrl, fieldLp());
         Button fetchBtn = button("جلب الرابط وفرز المحتوى");
         fetchBtn.setOnClickListener(v -> fetchM3u());
@@ -99,7 +98,7 @@ public class MainActivity extends Activity {
         root.addView(status, statusLp);
 
         TextView note = text(
-                "ملاحظة: التطبيق يتعامل مع المحتوى العام والروابط المباشرة. لا يتجاوز DRM أو تسجيل الدخول أو حماية المنصات.",
+                "M3U يتم قراءته وكتابته Streaming سطرًا بسطر لدعم القوائم الضخمة بدون تحميلها كاملة في الذاكرة. التطبيق لا يتجاوز DRM أو تسجيل الدخول أو حماية المنصات.",
                 12, Color.rgb(130, 140, 155), false);
         LinearLayout.LayoutParams noteLp = matchWrap();
         noteLp.setMargins(0, dp(14), 0, 0);
@@ -144,13 +143,12 @@ public class MainActivity extends Activity {
             show("اكتب رابط M3U/M3U8 صحيح");
             return;
         }
-        setStatus("جاري جلب قائمة M3U…");
+        setStatus("جاري فتح قائمة M3U وبدء المعالجة Streaming…");
         executor.execute(() -> {
-            try {
-                String content = NetUtil.fetchText(url, url);
-                processM3u(content);
+            try (NetUtil.StreamResult source = NetUtil.openTextStream(url, url)) {
+                processM3uStream(source.stream);
             } catch (Exception e) {
-                runOnUiThread(() -> setStatus("فشل جلب M3U: " + safeMessage(e)));
+                runOnUiThread(() -> setStatus("فشل جلب/فرز M3U: " + safeMessage(e)));
             }
         });
     }
@@ -167,31 +165,43 @@ public class MainActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == PICK_M3U && resultCode == RESULT_OK && data != null && data.getData() != null) {
             Uri uri = data.getData();
-            setStatus("جاري قراءة الملف…");
+            setStatus("جاري قراءة الملف وفرزه Streaming…");
             executor.execute(() -> {
-                try {
-                    String content = NetUtil.readUriText(this, uri);
-                    processM3u(content);
+                try (InputStream input = NetUtil.openUriStream(this, uri)) {
+                    processM3uStream(input);
                 } catch (Exception e) {
-                    runOnUiThread(() -> setStatus("فشل قراءة الملف: " + safeMessage(e)));
+                    runOnUiThread(() -> setStatus("فشل قراءة/فرز الملف: " + safeMessage(e)));
                 }
             });
         }
     }
 
-    private void processM3u(String content) {
-        try {
-            List<M3uParser.Entry> entries = M3uParser.parse(content);
-            if (entries.isEmpty()) {
+    private void processM3uStream(InputStream input) throws Exception {
+        try (TextExporter.StreamingSession output = TextExporter.openStreaming(this)) {
+            final long[] processed = {0L};
+
+            long total = M3uParser.parseStream(input, entry -> {
+                output.write(entry, M3uParser.classifyOne(entry));
+                processed[0]++;
+
+                if (processed[0] % 5000L == 0L) {
+                    long current = processed[0];
+                    runOnUiThread(() -> setStatus(
+                            "جاري الفرز… تمت معالجة " + String.format(Locale.US, "%,d", current) + " عنصر"));
+                }
+            });
+
+            if (total == 0L) {
                 throw new IllegalArgumentException("لم يتم العثور على عناصر M3U صالحة");
             }
-            M3uParser.Result result = M3uParser.classify(entries);
-            TextExporter.ExportResult out = TextExporter.export(this, result);
+
+            TextExporter.StreamingExportResult result = output.finish();
             runOnUiThread(() -> setStatus(String.format(Locale.US,
-                    "تم الفرز: قنوات %d | أفلام %d | مسلسلات %d\nتم الحفظ داخل Downloads/DownloadHub",
-                    result.channels.size(), result.movies.size(), result.series.size())));
-        } catch (Exception e) {
-            runOnUiThread(() -> setStatus("فشل فرز M3U: " + safeMessage(e)));
+                    "تم الفرز بنجاح ✅\nقنوات: %,d | أفلام: %,d | مسلسلات: %,d\nالإجمالي: %,d\nتم الحفظ داخل Downloads/DownloadHub",
+                    result.channelsCount,
+                    result.moviesCount,
+                    result.seriesCount,
+                    result.channelsCount + result.moviesCount + result.seriesCount)));
         }
     }
 
