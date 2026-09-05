@@ -18,11 +18,13 @@ public final class ReelTemplate implements Serializable {
     public final int endColor;
     public final int durationSec;
     public final boolean islamic;
+    public final int visualSeed;
 
     public ReelTemplate(String id, String categoryKey, String categoryName, String name,
                         String hook, String body, String cta, String hashtags,
                         String layout, String motion, String captionStyle,
-                        int startColor, int endColor, int durationSec, boolean islamic) {
+                        int startColor, int endColor, int durationSec, boolean islamic,
+                        int visualSeed) {
         this.id = id;
         this.categoryKey = categoryKey;
         this.categoryName = categoryName;
@@ -38,5 +40,6 @@ public final class ReelTemplate implements Serializable {
         this.endColor = endColor;
         this.durationSec = durationSec;
         this.islamic = islamic;
+        this.visualSeed = visualSeed;
     }
 }
