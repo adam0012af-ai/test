@@ -43,18 +43,41 @@ public final class NetUtil {
         }
     }
 
+    /**
+     * Opens a network stream without buffering the full response in RAM.
+     * Intended for huge M3U/M3U8 playlists.
+     */
+    public static StreamResult openTextStream(String url, String referer) throws Exception {
+        HttpURLConnection c = open(url, referer);
+        c.setReadTimeout(120000);
+        int code = c.getResponseCode();
+        if (code < 200 || code >= 400) {
+            c.disconnect();
+            throw new IllegalStateException("HTTP " + code);
+        }
+        String finalUrl = c.getURL().toString();
+        return new StreamResult(c, new BufferedInputStream(c.getInputStream(), 64 * 1024), finalUrl);
+    }
+
+    public static InputStream openUriStream(Context context, Uri uri) throws Exception {
+        InputStream in = context.getContentResolver().openInputStream(uri);
+        if (in == null) throw new IllegalStateException("تعذر فتح الملف");
+        return new BufferedInputStream(in, 64 * 1024);
+    }
+
     private static HttpURLConnection open(String url, String referer) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setInstanceFollowRedirects(true);
-        c.setConnectTimeout(15000);
+        c.setConnectTimeout(30000);
         c.setReadTimeout(25000);
         c.setRequestProperty("User-Agent", USER_AGENT);
-        c.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/json,text/plain,*/*");
+        c.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/json,text/plain,application/vnd.apple.mpegurl,audio/mpegurl,*/*");
         c.setRequestProperty("Accept-Language", "ar,en-US;q=0.9,en;q=0.8");
         if (referer != null && !referer.isEmpty()) c.setRequestProperty("Referer", referer);
         return c;
     }
 
+    // Kept for smaller text payloads used by platform page extraction.
     public static String readUriText(Context context, Uri uri) throws Exception {
         try (InputStream in = context.getContentResolver().openInputStream(uri)) {
             if (in == null) throw new IllegalStateException("تعذر فتح الملف");
@@ -73,6 +96,27 @@ public final class NetUtil {
             out.write(buf, 0, n);
         }
         return out.toString(StandardCharsets.UTF_8.name());
+    }
+
+    public static final class StreamResult implements AutoCloseable {
+        public final InputStream stream;
+        public final String finalUrl;
+        private final HttpURLConnection connection;
+
+        private StreamResult(HttpURLConnection connection, InputStream stream, String finalUrl) {
+            this.connection = connection;
+            this.stream = stream;
+            this.finalUrl = finalUrl;
+        }
+
+        @Override
+        public void close() throws Exception {
+            try {
+                stream.close();
+            } finally {
+                connection.disconnect();
+            }
+        }
     }
 
     public static final class FetchResult {
