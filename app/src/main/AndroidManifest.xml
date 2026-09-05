@@ -6,31 +6,45 @@
     <application
         android:allowBackup="true"
         android:extractNativeLibs="true"
-        android:icon="@drawable/app_logo"
-        android:roundIcon="@drawable/app_logo"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="Download Hub"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         android:theme="@android:style/Theme.Material.NoActionBar">
 
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <activity android:name=".PublishingActivity" android:exported="false" android:screenOrientation="portrait" />
+        <activity android:name=".TemplateEditorActivity" android:exported="false" android:screenOrientation="portrait" />
+        <activity android:name=".TemplateLibraryActivity" android:exported="false" android:screenOrientation="portrait" />
+        <activity android:name=".CreatorStudioActivity" android:exported="false" android:screenOrientation="portrait" />
+        <activity android:name=".UniversalSearchActivity" android:exported="false" android:screenOrientation="portrait" />
+        <activity android:name=".LibraryActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".StatsActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".BatchActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".SettingsActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".HistoryActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".DownloadsActivity" android:exported="false" android:screenOrientation="portrait" />
 
-        <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait">
+        <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait" android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
-
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
