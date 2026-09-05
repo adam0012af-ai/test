@@ -16,6 +16,10 @@ public final class CreatorProject implements Serializable {
     public String hashtags;
     public String sourceUri;
     public String audioUri;
+    public String layout;
+    public String motion;
+    public String captionStyle;
+    public int visualSeed;
     public int startColor;
     public int endColor;
     public int durationSec;
@@ -32,6 +36,10 @@ public final class CreatorProject implements Serializable {
         p.body = t.body;
         p.cta = t.cta;
         p.hashtags = t.hashtags;
+        p.layout = t.layout;
+        p.motion = t.motion;
+        p.captionStyle = t.captionStyle;
+        p.visualSeed = t.visualSeed;
         p.startColor = t.startColor;
         p.endColor = t.endColor;
         p.durationSec = t.durationSec;
@@ -53,6 +61,10 @@ public final class CreatorProject implements Serializable {
             o.put("hashtags", safe(hashtags));
             o.put("sourceUri", safe(sourceUri));
             o.put("audioUri", safe(audioUri));
+            o.put("layout", safe(layout));
+            o.put("motion", safe(motion));
+            o.put("captionStyle", safe(captionStyle));
+            o.put("visualSeed", visualSeed);
             o.put("startColor", startColor);
             o.put("endColor", endColor);
             o.put("durationSec", durationSec);
@@ -74,6 +86,10 @@ public final class CreatorProject implements Serializable {
         p.hashtags = o.optString("hashtags", "#Reels #DownloadHub");
         p.sourceUri = o.optString("sourceUri", "");
         p.audioUri = o.optString("audioUri", "");
+        p.layout = o.optString("layout", "Center Focus");
+        p.motion = o.optString("motion", "Smooth Zoom");
+        p.captionStyle = o.optString("captionStyle", "Bold Highlight");
+        p.visualSeed = o.optInt("visualSeed", Math.abs(p.templateId.hashCode()));
         p.startColor = o.optInt("startColor", 0xFF1357D5);
         p.endColor = o.optInt("endColor", 0xFF07152A);
         p.durationSec = Math.max(6, o.optInt("durationSec", 15));
