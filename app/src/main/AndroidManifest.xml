@@ -26,6 +26,7 @@
         <activity android:name=".PublishingActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".TemplateEditorActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".TemplateLibraryActivity" android:exported="false" android:screenOrientation="portrait" />
+        <activity android:name=".IslamicReelsActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".CreatorStudioActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".UniversalSearchActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".LibraryActivity" android:exported="false" android:screenOrientation="portrait" />
