@@ -17,7 +17,9 @@ public final class PlatformExtractor {
 
     public static VideoCandidate extract(String inputUrl) throws Exception {
         if (looksLikeDirectVideo(inputUrl)) {
-            return new VideoCandidate(inputUrl, DownloadUtil.guessFileName(inputUrl, "video.mp4"), null);
+            MediaValidator.ProbeResult probe = MediaValidator.probe(inputUrl, null, null);
+            if (!probe.valid) throw new IllegalStateException(probe.reason);
+            return new VideoCandidate(probe.finalUrl, DownloadUtil.guessFileName(probe.finalUrl, "video.mp4"), null);
         }
 
         String inputHost = safeHost(inputUrl);
@@ -25,7 +27,7 @@ public final class PlatformExtractor {
             try {
                 return extractTikTokWithTikwm(inputUrl);
             } catch (Exception ignored) {
-                // TikTok changes frequently. Fall back to clean playback fields, then BrowserCaptureActivity.
+                // Fall back to page parsing, then BrowserCaptureActivity.
             }
         }
 
@@ -37,14 +39,12 @@ public final class PlatformExtractor {
         List<Pattern> patterns = new ArrayList<>();
 
         if (isTikTok(host)) {
-            // Prefer playback addresses. Do NOT prefer downloadAddr because that path commonly carries the watermark version.
             patterns.add(Pattern.compile("\\\"playAddr\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
             patterns.add(Pattern.compile("\\\"playAddr\\\"\\s*:\\s*\\{.{0,2200}?\\\"src\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
             patterns.add(Pattern.compile("\\\"PlayAddr\\\"\\s*:\\s*\\{.{0,4200}?\\\"UrlList\\\"\\s*:\\s*\\[\\s*\\\"([^\\\"]+)\\\"", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
             patterns.add(Pattern.compile("\\\"play_addr\\\"\\s*:\\s*\\{.{0,2200}?\\\"url_list\\\"\\s*:\\s*\\[\\s*\\\"([^\\\"]+)\\\"", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
         }
 
-        // Common social-platform JSON fields.
         patterns.add(Pattern.compile("\\\"browser_native_hd_url\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
         patterns.add(Pattern.compile("\\\"browser_native_sd_url\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
         patterns.add(Pattern.compile("\\\"video_url\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
@@ -52,16 +52,14 @@ public final class PlatformExtractor {
         patterns.add(Pattern.compile("\\\"content_url\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
         patterns.add(Pattern.compile("\\\"playbackUrl\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
 
-        // OpenGraph / HTML video hints.
         patterns.add(Pattern.compile("<meta[^>]+property=[\\\"']og:video(?::url|:secure_url)?[\\\"'][^>]+content=[\\\"']([^\\\"']+)[\\\"']", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
         patterns.add(Pattern.compile("<meta[^>]+content=[\\\"']([^\\\"']+)[\\\"'][^>]+property=[\\\"']og:video(?::url|:secure_url)?[\\\"']", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
         patterns.add(Pattern.compile("<meta[^>]+name=[\\\"']twitter:player:stream[\\\"'][^>]+content=[\\\"']([^\\\"']+)[\\\"']", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
         patterns.add(Pattern.compile("<video[^>]+src=[\\\"']([^\\\"']+)[\\\"']", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
         patterns.add(Pattern.compile("<source[^>]+src=[\\\"']([^\\\"']+)[\\\"']", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
-
-        // Last-resort MP4/WebM URL embedded in JSON or scripts.
         patterns.add(Pattern.compile("[\\\"'](https?:\\\\?/\\\\?/[^\\\"']+?\\.(?:mp4|webm)(?:\\?[^\\\"']*)?)[\\\"']", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
 
+        String lastReason = "";
         for (Pattern p : patterns) {
             Matcher m = p.matcher(html);
             while (m.find()) {
@@ -69,14 +67,23 @@ public final class PlatformExtractor {
                 if (!isDownloadableHttpVideo(candidate)) continue;
                 if (isTikTok(host) && looksWatermarkedTikTokCandidate(candidate)) continue;
 
+                MediaValidator.ProbeResult probe = MediaValidator.probe(candidate, finalUrl, null);
+                if (!probe.valid) {
+                    lastReason = probe.reason;
+                    continue;
+                }
+
                 String title = extractTitle(html);
                 String defaultName = platformDefaultName(host);
                 String fileName = title.isEmpty() ? defaultName : DownloadUtil.sanitizeFileName(title) + ".mp4";
-                return new VideoCandidate(candidate, fileName, finalUrl);
+                return new VideoCandidate(probe.finalUrl, fileName, finalUrl);
             }
         }
 
-        throw new IllegalStateException("لم أجد ملف فيديو مباشر في HTML؛ استخدم وضع المتصفح لالتقاط الفيديو بعد تشغيله");
+        if (!lastReason.isEmpty()) {
+            throw new IllegalStateException("تم العثور على وسائط لكن تم رفضها لأنها ليست ملف فيديو كامل: " + lastReason);
+        }
+        throw new IllegalStateException("لم أجد ملف فيديو كاملًا قابلًا للتحقق؛ استخدم المتصفح وشغّل الفيديو ثم اضغط تحقق ثم حمّل");
     }
 
     private static VideoCandidate extractTikTokWithTikwm(String inputUrl) throws Exception {
@@ -91,6 +98,9 @@ public final class PlatformExtractor {
         if (video.isEmpty()) throw new IllegalStateException("TikTok resolver returned no video");
         if (video.startsWith("/")) video = "https://www.tikwm.com" + video;
 
+        MediaValidator.ProbeResult probe = MediaValidator.probe(video, "https://www.tikwm.com/", null);
+        if (!probe.valid) throw new IllegalStateException(probe.reason);
+
         String id = data.optString("id", "").trim();
         String title = data.optString("title", "").replaceAll("\\s+", " ").trim();
         if (title.length() > 80) title = title.substring(0, 80).trim();
@@ -99,7 +109,7 @@ public final class PlatformExtractor {
         else if (!id.isEmpty()) name = "TikTok_clean_" + DownloadUtil.sanitizeFileName(id) + ".mp4";
         else name = "TikTok_clean_video.mp4";
 
-        return new VideoCandidate(video, name, "https://www.tikwm.com/");
+        return new VideoCandidate(probe.finalUrl, name, "https://www.tikwm.com/");
     }
 
     public static boolean isKnownPlatform(String url) {
@@ -185,14 +195,14 @@ public final class PlatformExtractor {
         if (url == null) return false;
         String lower = url.toLowerCase(Locale.ROOT);
         if (!lower.startsWith("http://") && !lower.startsWith("https://")) return false;
-        if (lower.contains(".m3u8")) return false;
+        if (MediaValidator.structuralProblem(url) != null) return false;
         return lower.contains(".mp4") || lower.contains(".webm") || lower.contains(".mov")
                 || lower.contains(".m4v") || lower.contains("video") || lower.contains("play");
     }
 
     private static boolean looksLikeDirectVideo(String url) {
         String lower = url.toLowerCase(Locale.ROOT);
-        return lower.matches(".*\\.(mp4|m4v|webm|mov|mkv|avi|ts)(\\?.*)?$");
+        return lower.matches(".*\\.(mp4|m4v|webm|mov|mkv|avi)(\\?.*)?$");
     }
 
     private static boolean isTikTok(String host) {
