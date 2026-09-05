@@ -48,7 +48,7 @@ public class MainActivity extends Activity {
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(18), dp(24), dp(18), dp(30));
+        root.setPadding(dp(18), dp(20), dp(18), dp(30));
         root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         scroll.addView(root, new ScrollView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -58,12 +58,19 @@ public class MainActivity extends Activity {
         title.setGravity(Gravity.CENTER_HORIZONTAL);
         root.addView(title);
 
-        TextView sub = text("تحميل روابط مباشرة + استخراج فيديو من المنصات + فرز M3U الضخم", 14,
+        TextView sub = text("تحميل روابط + منصات + M3U ضخم", 14,
                 Color.rgb(170, 180, 195), false);
         sub.setGravity(Gravity.CENTER_HORIZONTAL);
         LinearLayout.LayoutParams subLp = matchWrap();
-        subLp.setMargins(0, dp(6), 0, dp(24));
+        subLp.setMargins(0, dp(6), 0, dp(12));
         root.addView(sub, subLp);
+
+        Button downloadsBtn = button("التحميلات");
+        downloadsBtn.setBackgroundTintList(ColorStateList.valueOf(Color.rgb(46, 55, 70)));
+        downloadsBtn.setOnClickListener(v -> startActivity(new Intent(this, DownloadsActivity.class)));
+        LinearLayout.LayoutParams topBtnLp = buttonLp();
+        topBtnLp.setMargins(0, 0, 0, dp(10));
+        root.addView(downloadsBtn, topBtnLp);
 
         root.addView(section("تحميل رابط مباشر"));
         directUrl = input("ضع رابط ملف أو فيديو مباشر https://...");
@@ -73,11 +80,23 @@ public class MainActivity extends Activity {
         root.addView(directBtn, buttonLp());
 
         root.addView(section("تحميل من المنصات"));
-        platformUrl = input("ضع رابط TikTok أو صفحة فيديو عامة");
+        TextView supported = text(
+                "TikTok • Instagram • Facebook • X/Twitter • Reddit • Pinterest • Vimeo • Dailymotion • Twitch • YouTube (حسب الرابط)",
+                12, Color.rgb(135, 155, 180), false);
+        LinearLayout.LayoutParams splp = matchWrap();
+        splp.setMargins(0, 0, 0, dp(7));
+        root.addView(supported, splp);
+
+        platformUrl = input("ضع رابط الفيديو أو المنشور من المنصة");
         root.addView(platformUrl, fieldLp());
         Button extractBtn = button("استخراج أفضل فيديو وتحميله");
         extractBtn.setOnClickListener(v -> startPlatformExtraction());
         root.addView(extractBtn, buttonLp());
+
+        Button browserBtn = button("فتح وضع المتصفح والتقاط الفيديو");
+        browserBtn.setBackgroundTintList(ColorStateList.valueOf(Color.rgb(46, 55, 70)));
+        browserBtn.setOnClickListener(v -> openBrowserMode(value(platformUrl)));
+        root.addView(browserBtn, buttonLp());
 
         root.addView(section("M3U / M3U8"));
         m3uUrl = input("ضع رابط M3U / M3U8 مهما كان حجمه");
@@ -98,7 +117,7 @@ public class MainActivity extends Activity {
         root.addView(status, statusLp);
 
         TextView note = text(
-                "M3U يتم قراءته وكتابته Streaming سطرًا بسطر لدعم القوائم الضخمة بدون تحميلها كاملة في الذاكرة. التطبيق لا يتجاوز DRM أو تسجيل الدخول أو حماية المنصات.",
+                "TikTok يستخدم Resolver مخصص للنسخة النظيفة عندما تكون متاحة. عند فشل أي منصة يمكن وضع المتصفح التقاط مصدر الفيديو العام بعد تشغيله. M3U يُعالج Streaming بدون تحميل القائمة كاملة في الذاكرة. لا يتم تجاوز DRM.",
                 12, Color.rgb(130, 140, 155), false);
         LinearLayout.LayoutParams noteLp = matchWrap();
         noteLp.setMargins(0, dp(14), 0, 0);
@@ -123,7 +142,7 @@ public class MainActivity extends Activity {
             show("اكتب رابط منصة صحيح");
             return;
         }
-        setStatus("جاري تحليل صفحة الفيديو…");
+        setStatus("جاري تحليل الرابط…");
         executor.execute(() -> {
             try {
                 PlatformExtractor.VideoCandidate result = PlatformExtractor.extract(url);
@@ -132,9 +151,22 @@ public class MainActivity extends Activity {
                     enqueue(result.url, result.fileName, result.referer);
                 });
             } catch (Exception e) {
-                runOnUiThread(() -> setStatus("تعذر استخراج الفيديو: " + safeMessage(e)));
+                runOnUiThread(() -> {
+                    setStatus("الاستخراج المباشر لم ينجح. سيتم فتح وضع المتصفح…");
+                    openBrowserMode(url);
+                });
             }
         });
+    }
+
+    private void openBrowserMode(String url) {
+        if (!isHttp(url)) {
+            show("ضع رابط منصة صحيح أولًا");
+            return;
+        }
+        Intent i = new Intent(this, BrowserCaptureActivity.class);
+        i.putExtra(BrowserCaptureActivity.EXTRA_URL, url);
+        startActivity(i);
     }
 
     private void fetchM3u() {
@@ -222,7 +254,8 @@ public class MainActivity extends Activity {
 
             DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
             long id = dm.enqueue(request);
-            setStatus("بدأ التحميل. رقم العملية: " + id);
+            DownloadStore.add(this, id, name, url);
+            setStatus("بدأ التحميل ✅ — تقدر تتابعه من منيو التحميلات");
             Toast.makeText(this, "بدأ التحميل", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             setStatus("تعذر بدء التحميل: " + safeMessage(e));
