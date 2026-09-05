@@ -33,7 +33,23 @@ jobs:
           gradle-version: '8.9'
 
       - name: Build unsigned release APK
-        run: gradle :app:assembleRelease --stacktrace --no-daemon
+        run: |
+          set +e
+          gradle :app:assembleRelease --stacktrace --no-daemon > build.log 2>&1
+          code=$?
+          tail -n 500 build.log
+          echo "$code" > build-exit-code.txt
+          exit "$code"
+
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DownloadHub-v6-build-diagnostics
+          path: |
+            build.log
+            build-exit-code.txt
+          if-no-files-found: warn
 
       - name: Stage signing tool
         run: |
@@ -44,6 +60,6 @@ jobs:
       - name: Upload release bundle
         uses: actions/upload-artifact@v4
         with:
-          name: DownloadHub-v2-release-bundle
+          name: DownloadHub-v6-release-bundle
           path: build-artifact/
           if-no-files-found: error
