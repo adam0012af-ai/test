@@ -12,6 +12,8 @@
         android:usesCleartextTraffic="true"
         android:theme="@android:style/Theme.Material.NoActionBar">
 
+        <activity android:name=".StatsActivity" android:exported="false" android:screenOrientation="portrait" />
+        <activity android:name=".BatchActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".SettingsActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".HistoryActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".DownloadsActivity" android:exported="false" android:screenOrientation="portrait" />
