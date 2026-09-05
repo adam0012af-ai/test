@@ -5,7 +5,6 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.Gravity;
@@ -27,286 +26,46 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class MainActivity extends Activity {
-    public static final String EXTRA_PREFILL_URL = "prefill_url";
-
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    public static final String EXTRA_PREFILL_URL="prefill_url";
+    private final ExecutorService executor=Executors.newSingleThreadExecutor();
     private EditText smartUrl;
     private TextView status;
     private Button downloadButton;
     private boolean handledIntent;
 
-    @Override protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        getWindow().setStatusBarColor(Ui.BG);
-        getWindow().setNavigationBarColor(Ui.BG);
-        setContentView(buildUi());
-        consumeIntent(getIntent());
+    @Override protected void onCreate(Bundle b){super.onCreate(b);getWindow().setStatusBarColor(Ui.BG);getWindow().setNavigationBarColor(Ui.BG);setContentView(buildUi());consumeIntent(getIntent());}
+    @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);handledIntent=false;consumeIntent(i);}
+    @Override protected void onResume(){super.onResume();if(AppPrefs.autoClipboard(this)&&smartUrl!=null&&value(smartUrl).isEmpty()){String u=clipboardUrl();if(isHttp(u)){smartUrl.setText(u);setStatus("رابط من الحافظة جاهز");}}}
+
+    private View buildUi(){
+        LinearLayout page=new LinearLayout(this);page.setOrientation(LinearLayout.VERTICAL);page.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);page.setBackground(Ui.gradient(Ui.BG,Ui.BG_2,0,this));
+        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(Ui.dp(this,16),Ui.dp(this,14),Ui.dp(this,16),Ui.dp(this,28));scroll.addView(root,new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT));page.addView(scroll,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,1f));
+        LinearLayout header=new LinearLayout(this);header.setOrientation(LinearLayout.HORIZONTAL);header.setGravity(Gravity.CENTER_VERTICAL);ImageView logo=new ImageView(this);logo.setImageResource(R.mipmap.ic_launcher);logo.setScaleType(ImageView.ScaleType.FIT_CENTER);header.addView(logo,new LinearLayout.LayoutParams(Ui.dp(this,54),Ui.dp(this,54)));LinearLayout brand=new LinearLayout(this);brand.setOrientation(LinearLayout.VERTICAL);brand.addView(Ui.text(this,"Download Hub",24,Ui.TEXT,true));brand.addView(Ui.text(this,"V6 • MEDIA & CREATOR CENTER",10,Ui.CYAN,true));brand.addView(Ui.text(this,"AboAdam",10,Ui.MUTED,false));LinearLayout.LayoutParams br=new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f);br.setMargins(Ui.dp(this,10),0,0,0);header.addView(brand,br);Button settings=Ui.ghost(this,"⚙");settings.setTextSize(18);settings.setOnClickListener(v->startActivity(new Intent(this,SettingsActivity.class)));header.addView(settings,new LinearLayout.LayoutParams(Ui.dp(this,48),Ui.dp(this,46)));root.addView(header);
+
+        LinearLayout creator=Ui.card(this);LinearLayout.LayoutParams cr=Ui.matchWrap();cr.setMargins(0,Ui.dp(this,14),0,0);creator.setLayoutParams(cr);creator.setBackground(Ui.gradient3(0xFF0C4D9B,0xFF143462,0xFF0A1B32,24,this));creator.addView(Ui.text(this,"حمّل • اصنع • عدّل • انشر",23,Ui.TEXT,true));TextView hs=Ui.text(this,"تحميل فيديو وصوت + Creator Studio بقوالب Reels فعلية قابلة للتعديل والتصدير.",12,0xFFC9DDF6,false);hs.setLineSpacing(0,1.25f);LinearLayout.LayoutParams hsp=Ui.matchWrap();hsp.setMargins(0,Ui.dp(this,7),0,Ui.dp(this,13));creator.addView(hs,hsp);LinearLayout hr=new LinearLayout(this);hr.setOrientation(LinearLayout.HORIZONTAL);Button studio=Ui.accent(this,"✦  Creator Studio");studio.setOnClickListener(v->startActivity(new Intent(this,CreatorStudioActivity.class)));hr.addView(studio,new LinearLayout.LayoutParams(0,Ui.dp(this,54),1f));Button islamic=Ui.secondary(this,"☾  ريلز إسلامي");islamic.setOnClickListener(v->{Intent i=new Intent(this,TemplateLibraryActivity.class);i.putExtra("category","islamic");startActivity(i);});LinearLayout.LayoutParams isl=new LinearLayout.LayoutParams(0,Ui.dp(this,54),1f);isl.setMargins(Ui.dp(this,8),0,0,0);hr.addView(islamic,isl);creator.addView(hr);root.addView(creator);
+
+        TextView dlTitle=Ui.sectionTitle(this,"تحميل الوسائط");LinearLayout.LayoutParams dlt=Ui.matchWrap();dlt.setMargins(0,Ui.dp(this,20),0,Ui.dp(this,9));root.addView(dlTitle,dlt);LinearLayout modes=new LinearLayout(this);modes.setOrientation(LinearLayout.HORIZONTAL);Button linkMode=Ui.primary(this,"🔗  بالرابط");linkMode.setEnabled(false);modes.addView(linkMode,new LinearLayout.LayoutParams(0,Ui.dp(this,48),1f));Button searchMode=Ui.secondary(this,"⌕  بحث بدون رابط");searchMode.setOnClickListener(v->startActivity(new Intent(this,UniversalSearchActivity.class)));LinearLayout.LayoutParams sm=new LinearLayout.LayoutParams(0,Ui.dp(this,48),1f);sm.setMargins(Ui.dp(this,8),0,0,0);modes.addView(searchMode,sm);root.addView(modes);
+        LinearLayout downloader=Ui.card(this);LinearLayout.LayoutParams dc=Ui.matchWrap();dc.setMargins(0,Ui.dp(this,9),0,0);downloader.setLayoutParams(dc);downloader.addView(Ui.text(this,"ألصق أي رابط فيديو أو صوت",16,Ui.TEXT,true));downloader.addView(Ui.text(this,"التطبيق يجرّب المحرك السريع ثم yt-dlp تلقائيًا.",11,Ui.MUTED,false));smartUrl=Ui.input(this,"https://…",true);smartUrl.setTextDirection(View.TEXT_DIRECTION_LTR);LinearLayout.LayoutParams su=Ui.matchWrap();su.height=Ui.dp(this,80);su.setMargins(0,Ui.dp(this,10),0,0);downloader.addView(smartUrl,su);LinearLayout actions=new LinearLayout(this);actions.setOrientation(LinearLayout.HORIZONTAL);LinearLayout.LayoutParams ar=Ui.matchWrap();ar.setMargins(0,Ui.dp(this,8),0,0);Button paste=Ui.secondary(this,"لصق");paste.setOnClickListener(v->pasteLink());actions.addView(paste,new LinearLayout.LayoutParams(0,Ui.dp(this,44),1f));Button clear=Ui.ghost(this,"مسح");clear.setOnClickListener(v->{smartUrl.setText("");setStatus("جاهز");});LinearLayout.LayoutParams cl=new LinearLayout.LayoutParams(0,Ui.dp(this,44),1f);cl.setMargins(Ui.dp(this,7),0,0,0);actions.addView(clear,cl);downloader.addView(actions,ar);downloadButton=Ui.accent(this,"↓  تجهيز خيارات التحميل");downloadButton.setTextSize(16);downloadButton.setOnClickListener(v->smartProcess());LinearLayout.LayoutParams db=Ui.matchWrap();db.height=Ui.dp(this,58);db.setMargins(0,Ui.dp(this,9),0,0);downloader.addView(downloadButton,db);root.addView(downloader);
+        LinearLayout state=Ui.card(this);LinearLayout.LayoutParams st=Ui.matchWrap();st.setMargins(0,Ui.dp(this,9),0,0);state.setLayoutParams(st);status=Ui.text(this,"جاهز",12,Ui.GREEN,true);status.setGravity(Gravity.CENTER);status.setLineSpacing(0,1.2f);state.addView(status);root.addView(state);
+        TextView quick=Ui.sectionTitle(this,"وصول سريع");LinearLayout.LayoutParams qt=Ui.matchWrap();qt.setMargins(0,Ui.dp(this,20),0,Ui.dp(this,9));root.addView(quick,qt);root.addView(quickRow("↓  التحميلات",v->startActivity(new Intent(this,DownloadsActivity.class)),"▦  المكتبة",v->startActivity(new Intent(this,LibraryActivity.class))));LinearLayout.LayoutParams q2=Ui.matchWrap();q2.setMargins(0,Ui.dp(this,8),0,0);root.addView(quickRow("★  السجل",v->startActivity(new Intent(this,HistoryActivity.class)),"☷  Batch",v->startActivity(new Intent(this,BatchActivity.class))),q2);LinearLayout.LayoutParams q3=Ui.matchWrap();q3.setMargins(0,Ui.dp(this,8),0,0);root.addView(quickRow("▥  الإحصائيات",v->startActivity(new Intent(this,StatsActivity.class)),"⚙  الإعدادات",v->startActivity(new Intent(this,SettingsActivity.class))),q3);TextView footer=Ui.text(this,"Download Hub v6.0 • Developed by AboAdam",10,Ui.MUTED_2,true);footer.setGravity(Gravity.CENTER);LinearLayout.LayoutParams ft=Ui.matchWrap();ft.setMargins(0,Ui.dp(this,22),0,0);root.addView(footer,ft);page.addView(bottomNav(),new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,68)));return page;
     }
 
-    @Override protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        setIntent(intent);
-        handledIntent = false;
-        consumeIntent(intent);
-    }
-
-    @Override protected void onResume() {
-        super.onResume();
-        if (AppPrefs.autoClipboard(this) && smartUrl != null && value(smartUrl).isEmpty()) {
-            String clip = clipboardUrl();
-            if (isHttp(clip)) {
-                smartUrl.setText(clip);
-                setStatus("الرابط جاهز للتحميل");
-            }
-        }
-    }
-
-    private View buildUi() {
-        ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(true);
-        scroll.setBackground(Ui.gradient(Ui.BG, Color.rgb(5, 16, 31), 0, this));
-
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        root.setPadding(Ui.dp(this,16),Ui.dp(this,16),Ui.dp(this,16),Ui.dp(this,30));
-        scroll.addView(root,new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        LinearLayout header = new LinearLayout(this);
-        header.setOrientation(LinearLayout.HORIZONTAL);
-        header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(0,0,0,Ui.dp(this,8));
-
-        ImageView logo = new ImageView(this);
-        logo.setImageResource(R.drawable.app_logo);
-        logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        header.addView(logo,new LinearLayout.LayoutParams(Ui.dp(this,58),Ui.dp(this,58)));
-
-        LinearLayout brand = new LinearLayout(this);
-        brand.setOrientation(LinearLayout.VERTICAL);
-        brand.addView(Ui.text(this,"Download Hub",26,Ui.TEXT,true));
-        brand.addView(Ui.text(this,"V5.1 • UNIVERSAL MEDIA DOWNLOADER",10,Ui.CYAN,true));
-        brand.addView(Ui.text(this,"Developer • AboAdam",10,Ui.MUTED,true));
-        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f);
-        bp.setMargins(Ui.dp(this,11),0,0,0);
-        header.addView(brand,bp);
-
-        Button settings=Ui.secondary(this,"⚙");
-        settings.setTextSize(19);
-        settings.setOnClickListener(v->startActivity(new Intent(this,SettingsActivity.class)));
-        header.addView(settings,new LinearLayout.LayoutParams(Ui.dp(this,50),Ui.dp(this,46)));
-        root.addView(header);
-
-        LinearLayout hero = Ui.card(this);
-        hero.setPadding(Ui.dp(this,18),Ui.dp(this,18),Ui.dp(this,18),Ui.dp(this,18));
-        hero.setBackground(Ui.gradient(Color.rgb(10,34,66),Color.rgb(8,22,43),24,this));
-        hero.addView(Ui.text(this,"حمّل الفيديو والصوت بسهولة",24,Ui.TEXT,true));
-        TextView heroSub=Ui.text(this,"ألصق أي رابط فيديو مدعوم، والتطبيق يجرب أكثر من محرك تلقائيًا حتى يجد أفضل خيارات قابلة للحفظ.",13,Ui.MUTED,false);
-        heroSub.setLineSpacing(0,1.25f);
-        LinearLayout.LayoutParams hs=Ui.matchWrap();hs.setMargins(0,Ui.dp(this,6),0,Ui.dp(this,13));hero.addView(heroSub,hs);
-
-        LinearLayout badges=new LinearLayout(this);badges.setOrientation(LinearLayout.HORIZONTAL);
-        badges.addView(badge("اختيار الجودة"),new LinearLayout.LayoutParams(0,Ui.dp(this,36),1f));
-        LinearLayout.LayoutParams b2=new LinearLayout.LayoutParams(0,Ui.dp(this,36),1f);b2.setMargins(Ui.dp(this,6),0,0,0);badges.addView(badge("صوت فقط"),b2);
-        LinearLayout.LayoutParams b3=new LinearLayout.LayoutParams(0,Ui.dp(this,36),1f);b3.setMargins(Ui.dp(this,6),0,0,0);badges.addView(badge("محرك متقدم"),b3);
-        hero.addView(badges);
-        root.addView(hero);
-
-        LinearLayout downloader=Ui.card(this);
-        LinearLayout.LayoutParams dcp=Ui.matchWrap();dcp.setMargins(0,Ui.dp(this,14),0,0);downloader.setLayoutParams(dcp);
-        downloader.addView(Ui.text(this,"تحميل",20,Ui.TEXT,true));
-        TextView support=Ui.text(this,"ألصق الرابط فقط — التطبيق يتعرّف على المنصة تلقائيًا",12,Ui.CYAN,true);
-        LinearLayout.LayoutParams ssp=Ui.matchWrap();ssp.setMargins(0,Ui.dp(this,3),0,Ui.dp(this,10));downloader.addView(support,ssp);
-
-        smartUrl=new EditText(this);
-        smartUrl.setHint("ألصق رابط الفيديو هنا");
-        smartUrl.setTextColor(Ui.TEXT);
-        smartUrl.setHintTextColor(Color.rgb(111,130,157));
-        smartUrl.setTextSize(14);
-        smartUrl.setSingleLine(false);
-        smartUrl.setMinLines(2);
-        smartUrl.setMaxLines(3);
-        smartUrl.setGravity(Gravity.TOP|Gravity.START);
-        smartUrl.setTextDirection(View.TEXT_DIRECTION_LTR);
-        smartUrl.setPadding(Ui.dp(this,14),Ui.dp(this,13),Ui.dp(this,14),Ui.dp(this,13));
-        smartUrl.setBackground(Ui.bordered(Color.rgb(6,14,26),Color.rgb(42,69,101),1,17,this));
-        downloader.addView(smartUrl,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,76)));
-
-        LinearLayout linkActions=new LinearLayout(this);linkActions.setOrientation(LinearLayout.HORIZONTAL);
-        Button paste=Ui.secondary(this,"لصق");paste.setOnClickListener(v->pasteLink());linkActions.addView(paste,new LinearLayout.LayoutParams(0,Ui.dp(this,44),1f));
-        Button clear=Ui.secondary(this,"مسح");clear.setOnClickListener(v->{smartUrl.setText("");setStatus("جاهز");});
-        LinearLayout.LayoutParams c=new LinearLayout.LayoutParams(0,Ui.dp(this,44),1f);c.setMargins(Ui.dp(this,8),0,0,0);linkActions.addView(clear,c);
-        LinearLayout.LayoutParams lap=Ui.matchWrap();lap.setMargins(0,Ui.dp(this,9),0,0);downloader.addView(linkActions,lap);
-
-        downloadButton=Ui.primary(this,"↓  تحميل");
-        downloadButton.setTextSize(17);
-        downloadButton.setOnClickListener(v->smartProcess());
-        LinearLayout.LayoutParams dl=Ui.matchWrap();dl.height=Ui.dp(this,58);dl.setMargins(0,Ui.dp(this,10),0,0);downloader.addView(downloadButton,dl);
-        root.addView(downloader);
-
-        LinearLayout state=Ui.card(this);
-        LinearLayout.LayoutParams stc=Ui.matchWrap();stc.setMargins(0,Ui.dp(this,12),0,0);state.setLayoutParams(stc);
-        status=Ui.text(this,"جاهز",13,Ui.GREEN,false);
-        status.setGravity(Gravity.CENTER);
-        status.setLineSpacing(0,1.2f);
-        state.addView(status);
-        root.addView(state);
-
-        TextView toolsTitle=Ui.text(this,"مركز الأدوات",18,Ui.TEXT,true);
-        LinearLayout.LayoutParams ttp=Ui.matchWrap();ttp.setMargins(0,Ui.dp(this,18),0,Ui.dp(this,9));root.addView(toolsTitle,ttp);
-        root.addView(quickRow("↓  التحميلات",v->startActivity(new Intent(this,DownloadsActivity.class)),"☷  Batch",v->startActivity(new Intent(this,BatchActivity.class))));
-        LinearLayout.LayoutParams row2p=Ui.matchWrap();row2p.setMargins(0,Ui.dp(this,9),0,0);
-        root.addView(quickRow("★  السجل والمفضلة",v->startActivity(new Intent(this,HistoryActivity.class)),"▥  الإحصائيات",v->startActivity(new Intent(this,StatsActivity.class))),row2p);
-        LinearLayout.LayoutParams row3p=Ui.matchWrap();row3p.setMargins(0,Ui.dp(this,9),0,0);
-        root.addView(singleQuick("⚙  الإعدادات",v->startActivity(new Intent(this,SettingsActivity.class))),row3p);
-
-        TextView footer=Ui.text(this,"Download Hub v5.1 • Developed by AboAdam",11,Color.rgb(96,118,148),true);
-        footer.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams fp=Ui.matchWrap();fp.setMargins(0,Ui.dp(this,22),0,0);root.addView(footer,fp);
-        return scroll;
-    }
-
-    private TextView badge(String value){
-        TextView t=Ui.text(this,value,10,Ui.CYAN,true);
-        t.setGravity(Gravity.CENTER);
-        t.setBackground(Ui.bordered(Color.rgb(8,24,43),Color.rgb(25,80,112),1,14,this));
-        return t;
-    }
-
-    private LinearLayout quickRow(String a,View.OnClickListener al,String b,View.OnClickListener bl){
-        LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.HORIZONTAL);
-        Button x=Ui.secondary(this,a);x.setTextSize(13);x.setOnClickListener(al);row.addView(x,new LinearLayout.LayoutParams(0,Ui.dp(this,56),1f));
-        Button y=Ui.secondary(this,b);y.setTextSize(13);y.setOnClickListener(bl);LinearLayout.LayoutParams yp=new LinearLayout.LayoutParams(0,Ui.dp(this,56),1f);yp.setMargins(Ui.dp(this,9),0,0,0);row.addView(y,yp);
-        return row;
-    }
-
-    private LinearLayout singleQuick(String label,View.OnClickListener listener){
-        LinearLayout row=new LinearLayout(this);Button b=Ui.secondary(this,label);b.setOnClickListener(listener);row.addView(b,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,54)));return row;
-    }
-
-    private void pasteLink(){
-        String u=clipboardUrl();
-        if(isHttp(u)){smartUrl.setText(u);setStatus("الرابط جاهز للتحميل");}
-        else show("الحافظة لا تحتوي على رابط صحيح");
-    }
-
-    private void consumeIntent(Intent intent){
-        if(intent==null||handledIntent||smartUrl==null)return;
-        handledIntent=true;
-        String u=intent.getStringExtra(EXTRA_PREFILL_URL);
-        if(u==null&&Intent.ACTION_SEND.equals(intent.getAction())){
-            CharSequence text=intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
-            if(text!=null)u=extractFirstUrl(text.toString());
-        }
-        if(u==null&&intent.getData()!=null)u=intent.getData().toString();
-        if(isHttp(u)){smartUrl.setText(u);setStatus("تم استلام الرابط — اضغط تحميل");}
-    }
-
-    private void smartProcess(){
-        String raw=value(smartUrl);
-        if(!isHttp(raw)){show("ضع رابط HTTP/HTTPS صحيح");return;}
-
-        String url=AppPrefs.linkCleaner(this)?LinkTools.clean(raw):raw;
-        if(!url.equals(raw))smartUrl.setText(url);
-        HistoryStore.add(this,url,detectKind(url));
-        setBusy(true);
-        setStatus("المحرك السريع: جاري تجهيز خيارات التحميل…");
-
-        executor.execute(()->{
-            Throwable firstError=null;
-            try {
-                PlatformExtractor.MediaBundle bundle=PlatformExtractor.extractOptions(url);
-                runOnUiThread(()->{setBusy(false);presentBundle(bundle,"المحرك السريع");});
-                return;
-            } catch(Throwable e) {
-                firstError=e;
-            }
-
-            runOnUiThread(()->setStatus("المحرك المتقدم: جاري تجربة الرابط…\nقد يستغرق وقتًا أطول أول مرة"));
-            try {
-                PlatformExtractor.MediaBundle bundle=YtDlpResolver.extractOptions(this,url);
-                runOnUiThread(()->{setBusy(false);presentBundle(bundle,"المحرك المتقدم");});
-            } catch(Throwable secondError) {
-                String a=safeMessage(firstError);
-                String b=safeMessage(secondError);
-                runOnUiThread(()->{
-                    setBusy(false);
-                    setStatus("تعذر العثور على ملف فيديو/صوت كامل بعد تجربة المحركين.\n"+shortError(a,b));
-                });
-            }
-        });
-    }
-
-    private void presentBundle(PlatformExtractor.MediaBundle bundle,String engine){
-        List<MediaOption> options=bundle.options;
-        if(options==null||options.isEmpty()){
-            setStatus("لم يتم العثور على فيديو أو صوت قابل للتحميل");
-            return;
-        }
-        setStatus(bundle.platform+" • "+options.size()+" خيارات • "+engine);
-        MediaOptionsDialog.show(this,bundle.title,options,this::startDownload);
-    }
-
-    private void startDownload(MediaOption option){
-        try{
-            long id=DownloadEngine.enqueue(this,option);
-            setStatus("تمت إضافة التحميل ✓\n"+option.label+(option.sizeBytes>0?" • "+MediaOption.formatBytes(option.sizeBytes):""));
-            show("بدأ التحميل #"+id);
-        }catch(Exception e){
-            String msg=safeMessage(e);
-            setStatus(msg);
-            show(msg);
-        }
-    }
-
-    private String shortError(String first,String second){
-        if(!TextUtils.isEmpty(second))return second;
-        if(!TextUtils.isEmpty(first))return first;
-        return "الرابط غير متاح كملف وسائط مباشر حاليًا";
-    }
-
-    private void setBusy(boolean busy){
-        if(downloadButton==null)return;
-        downloadButton.setEnabled(!busy);
-        downloadButton.setAlpha(busy?.55f:1f);
-        downloadButton.setText(busy?"جاري التجهيز…":"↓  تحميل");
-    }
-
+    private View bottomNav(){LinearLayout nav=new LinearLayout(this);nav.setOrientation(LinearLayout.HORIZONTAL);nav.setGravity(Gravity.CENTER);nav.setPadding(Ui.dp(this,8),Ui.dp(this,6),Ui.dp(this,8),Ui.dp(this,8));nav.setBackground(Ui.bordered(Ui.SURFACE,Ui.BORDER_SOFT,1,0,this));nav.addView(navButton("⌂\nالرئيسية",v->{}),new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.MATCH_PARENT,1f));nav.addView(navButton("↓\nالتحميلات",v->startActivity(new Intent(this,DownloadsActivity.class))),new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.MATCH_PARENT,1f));nav.addView(navButton("✦\nCreator",v->startActivity(new Intent(this,CreatorStudioActivity.class))),new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.MATCH_PARENT,1f));nav.addView(navButton("▦\nالمكتبة",v->startActivity(new Intent(this,LibraryActivity.class))),new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.MATCH_PARENT,1f));nav.addView(navButton("⚙\nالضبط",v->startActivity(new Intent(this,SettingsActivity.class))),new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.MATCH_PARENT,1f));return nav;}
+    private Button navButton(String s,View.OnClickListener l){Button b=Ui.ghost(this,s);b.setTextSize(10);b.setOnClickListener(l);return b;}
+    private LinearLayout quickRow(String a,View.OnClickListener al,String b,View.OnClickListener bl){LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.HORIZONTAL);Button x=Ui.secondary(this,a);x.setOnClickListener(al);row.addView(x,new LinearLayout.LayoutParams(0,Ui.dp(this,52),1f));Button y=Ui.secondary(this,b);y.setOnClickListener(bl);LinearLayout.LayoutParams yp=new LinearLayout.LayoutParams(0,Ui.dp(this,52),1f);yp.setMargins(Ui.dp(this,8),0,0,0);row.addView(y,yp);return row;}
+    private void pasteLink(){String u=clipboardUrl();if(isHttp(u)){smartUrl.setText(u);setStatus("الرابط جاهز للتحميل");}else show("الحافظة لا تحتوي على رابط صحيح");}
+    private void consumeIntent(Intent intent){if(intent==null||handledIntent||smartUrl==null)return;handledIntent=true;String u=intent.getStringExtra(EXTRA_PREFILL_URL);if(u==null&&Intent.ACTION_SEND.equals(intent.getAction())){CharSequence t=intent.getCharSequenceExtra(Intent.EXTRA_TEXT);if(t!=null)u=extractFirstUrl(t.toString());}if(u==null&&intent.getData()!=null)u=intent.getData().toString();if(isHttp(u)){smartUrl.setText(u);setStatus("تم استلام الرابط — اضغط تجهيز خيارات التحميل");}}
+    private void smartProcess(){String raw=value(smartUrl);if(!isHttp(raw)){show("ضع رابط HTTP/HTTPS صحيح");return;}String url=AppPrefs.linkCleaner(this)?LinkTools.clean(raw):raw;if(!url.equals(raw))smartUrl.setText(url);HistoryStore.add(this,url,detectKind(url));setBusy(true);setStatus("المحرك السريع: جاري تحليل الرابط…");executor.execute(()->{Throwable first=null;try{PlatformExtractor.MediaBundle b=PlatformExtractor.extractOptions(url);runOnUiThread(()->{setBusy(false);presentBundle(b,"المحرك السريع");});return;}catch(Throwable e){first=e;}runOnUiThread(()->setStatus("المحرك المتقدم yt-dlp: جاري تجربة الرابط…"));try{PlatformExtractor.MediaBundle b=YtDlpResolver.extractOptions(this,url);runOnUiThread(()->{setBusy(false);presentBundle(b,"yt-dlp");});}catch(Throwable second){String a=safeMessage(first),bb=safeMessage(second);runOnUiThread(()->{setBusy(false);setStatus("تعذر تجهيز ملف كامل من الرابط.\n"+shortError(a,bb));});}});}
+    private void presentBundle(PlatformExtractor.MediaBundle b,String engine){List<MediaOption> opts=b.options;if(opts==null||opts.isEmpty()){setStatus("لم يتم العثور على فيديو أو صوت قابل للتحميل");return;}setStatus(b.platform+" • "+opts.size()+" خيارات • "+engine);MediaOptionsDialog.show(this,b.title,opts,this::startDownload);}
+    private void startDownload(MediaOption o){try{long id=DownloadEngine.enqueue(this,o);setStatus("تمت إضافة التحميل ✓\n"+o.label+(o.sizeBytes>0?" • "+MediaOption.formatBytes(o.sizeBytes):""));show("بدأ التحميل #"+id);}catch(Exception e){String m=safeMessage(e);setStatus(m);show(m);}}
+    private void setBusy(boolean busy){if(downloadButton==null)return;downloadButton.setEnabled(!busy);downloadButton.setAlpha(busy?.55f:1f);downloadButton.setText(busy?"جاري التجهيز…":"↓  تجهيز خيارات التحميل");}
     private void setStatus(String s){if(status!=null)status.setText(s==null?"":s);}
     private String value(EditText e){return e==null||e.getText()==null?"":e.getText().toString().trim();}
     private boolean isHttp(String s){return s!=null&&(s.startsWith("http://")||s.startsWith("https://"));}
-
-    private String clipboardUrl(){
-        try{
-            ClipboardManager cm=(ClipboardManager)getSystemService(Context.CLIPBOARD_SERVICE);
-            if(cm==null||!cm.hasPrimaryClip())return"";
-            ClipData c=cm.getPrimaryClip();if(c==null||c.getItemCount()==0)return"";
-            CharSequence t=c.getItemAt(0).coerceToText(this);
-            return t==null?"":extractFirstUrl(t.toString());
-        }catch(Exception e){return"";}
-    }
-
-    private String extractFirstUrl(String text){
-        if(text==null)return"";
-        Matcher m=Pattern.compile("https?://\\S+").matcher(text);
-        if(!m.find())return"";
-        String u=m.group();
-        while(u.endsWith(")")||u.endsWith("]")||u.endsWith("}")||u.endsWith(",")||u.endsWith("."))u=u.substring(0,u.length()-1);
-        return u;
-    }
-
-    private String detectKind(String url){
-        try{
-            String h=new URI(url).getHost();
-            String p=PlatformExtractor.platformName(h);
-            return "Web".equals(p)?"رابط وسائط":p;
-        }catch(Exception e){return"رابط وسائط";}
-    }
-
-    private String safeMessage(Throwable e){
-        String m=e==null?null:e.getMessage();
-        return TextUtils.isEmpty(m)?"حدث خطأ أثناء تجهيز التحميل":m;
-    }
-
+    private String clipboardUrl(){try{ClipboardManager cm=(ClipboardManager)getSystemService(Context.CLIPBOARD_SERVICE);if(cm==null||!cm.hasPrimaryClip())return"";ClipData c=cm.getPrimaryClip();if(c==null||c.getItemCount()==0)return"";CharSequence t=c.getItemAt(0).coerceToText(this);return t==null?"":extractFirstUrl(t.toString());}catch(Exception e){return"";}}
+    private String extractFirstUrl(String text){if(text==null)return"";Matcher m=Pattern.compile("https?://\\S+").matcher(text);if(!m.find())return"";String u=m.group();while(u.endsWith(")")||u.endsWith("]")||u.endsWith("}")||u.endsWith(",")||u.endsWith("."))u=u.substring(0,u.length()-1);return u;}
+    private String detectKind(String url){try{String h=new URI(url).getHost();return PlatformExtractor.platformName(h);}catch(Exception e){return"Link";}}
+    private String safeMessage(Throwable e){if(e==null)return"";String s=e.getMessage();if(TextUtils.isEmpty(s))s=e.getClass().getSimpleName();s=s.replace('\n',' ').trim();return s.length()>180?s.substring(0,180)+"…":s;}
+    private String shortError(String a,String b){if(!TextUtils.isEmpty(b))return b;if(!TextUtils.isEmpty(a))return a;return"الرابط غير متاح كملف وسائط حاليًا";}
     private void show(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
 }
