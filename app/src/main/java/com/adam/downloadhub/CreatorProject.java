@@ -1,8 +1,10 @@
 package com.adam.downloadhub;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 
 public final class CreatorProject implements Serializable {
     public String id;
@@ -19,6 +21,8 @@ public final class CreatorProject implements Serializable {
     public String layout;
     public String motion;
     public String captionStyle;
+    public String aspectRatio = "9:16";
+    public String transitionStyle = "Fade";
     public int visualSeed;
     public int startColor;
     public int endColor;
@@ -27,6 +31,15 @@ public final class CreatorProject implements Serializable {
     public long trimEndMs;
     public int sourceVolume = 100;
     public int audioVolume = 100;
+    public long audioOffsetMs = 0;
+    public int textScale = 100;
+    public int textYPercent = 50;
+    public int textColor = 0xFFFFFFFF;
+    public boolean showText = true;
+    public int fadeInMs = 250;
+    public int fadeOutMs = 250;
+    public int selectedClipIndex = 0;
+    public ArrayList<EditorClip> clips = new ArrayList<>();
     public long updatedAt;
 
     public static CreatorProject fromTemplate(ReelTemplate t) {
@@ -51,11 +64,45 @@ public final class CreatorProject implements Serializable {
         p.trimEndMs = 0;
         p.sourceVolume = 100;
         p.audioVolume = 100;
+        p.audioOffsetMs = 0;
+        p.textScale = 100;
+        p.textYPercent = 50;
+        p.textColor = 0xFFFFFFFF;
+        p.showText = true;
+        p.aspectRatio = "9:16";
+        p.transitionStyle = "Fade";
+        p.fadeInMs = 250;
+        p.fadeOutMs = 250;
         p.updatedAt = System.currentTimeMillis();
         return p;
     }
 
+    public void ensureClips() {
+        if (clips == null) clips = new ArrayList<>();
+        if (clips.isEmpty() && sourceUri != null && !sourceUri.trim().isEmpty()) {
+            EditorClip c = new EditorClip(sourceUri);
+            c.trimStartMs = Math.max(0, trimStartMs);
+            c.trimEndMs = Math.max(0, trimEndMs);
+            c.volume = clamp(sourceVolume);
+            clips.add(c);
+        }
+        if (selectedClipIndex < 0) selectedClipIndex = 0;
+        if (!clips.isEmpty() && selectedClipIndex >= clips.size()) selectedClipIndex = clips.size() - 1;
+        syncPrimarySource();
+    }
+
+    public void syncPrimarySource() {
+        if (clips != null && !clips.isEmpty()) {
+            EditorClip first = clips.get(0);
+            sourceUri = first.uri;
+            trimStartMs = first.trimStartMs;
+            trimEndMs = first.trimEndMs;
+            sourceVolume = first.volume;
+        }
+    }
+
     public JSONObject toJson() {
+        ensureClips();
         JSONObject o = new JSONObject();
         try {
             o.put("id", safe(id));
@@ -72,6 +119,8 @@ public final class CreatorProject implements Serializable {
             o.put("layout", safe(layout));
             o.put("motion", safe(motion));
             o.put("captionStyle", safe(captionStyle));
+            o.put("aspectRatio", safe(aspectRatio));
+            o.put("transitionStyle", safe(transitionStyle));
             o.put("visualSeed", visualSeed);
             o.put("startColor", startColor);
             o.put("endColor", endColor);
@@ -80,6 +129,17 @@ public final class CreatorProject implements Serializable {
             o.put("trimEndMs", trimEndMs);
             o.put("sourceVolume", sourceVolume);
             o.put("audioVolume", audioVolume);
+            o.put("audioOffsetMs", audioOffsetMs);
+            o.put("textScale", textScale);
+            o.put("textYPercent", textYPercent);
+            o.put("textColor", textColor);
+            o.put("showText", showText);
+            o.put("fadeInMs", fadeInMs);
+            o.put("fadeOutMs", fadeOutMs);
+            o.put("selectedClipIndex", selectedClipIndex);
+            JSONArray a = new JSONArray();
+            for (EditorClip c : clips) if (c != null && c.uri != null && !c.uri.trim().isEmpty()) a.put(c.toJson());
+            o.put("clips", a);
             o.put("updatedAt", updatedAt);
         } catch (Exception ignored) {}
         return o;
@@ -101,6 +161,8 @@ public final class CreatorProject implements Serializable {
         p.layout = o.optString("layout", "Center Focus");
         p.motion = o.optString("motion", "Smooth Zoom");
         p.captionStyle = o.optString("captionStyle", "Bold Highlight");
+        p.aspectRatio = o.optString("aspectRatio", "9:16");
+        p.transitionStyle = o.optString("transitionStyle", "Fade");
         p.visualSeed = o.optInt("visualSeed", Math.abs(p.templateId.hashCode()));
         p.startColor = o.optInt("startColor", 0xFF1357D5);
         p.endColor = o.optInt("endColor", 0xFF07152A);
@@ -109,7 +171,24 @@ public final class CreatorProject implements Serializable {
         p.trimEndMs = Math.max(0, o.optLong("trimEndMs", 0));
         p.sourceVolume = clamp(o.optInt("sourceVolume", 100));
         p.audioVolume = clamp(o.optInt("audioVolume", 100));
+        p.audioOffsetMs = o.optLong("audioOffsetMs", 0);
+        p.textScale = Math.max(60, Math.min(180, o.optInt("textScale", 100)));
+        p.textYPercent = Math.max(10, Math.min(90, o.optInt("textYPercent", 50)));
+        p.textColor = o.optInt("textColor", 0xFFFFFFFF);
+        p.showText = o.optBoolean("showText", true);
+        p.fadeInMs = Math.max(0, Math.min(3000, o.optInt("fadeInMs", 250)));
+        p.fadeOutMs = Math.max(0, Math.min(3000, o.optInt("fadeOutMs", 250)));
+        p.selectedClipIndex = Math.max(0, o.optInt("selectedClipIndex", 0));
+        p.clips = new ArrayList<>();
+        JSONArray a = o.optJSONArray("clips");
+        if (a != null) {
+            for (int i = 0; i < a.length(); i++) {
+                JSONObject c = a.optJSONObject(i);
+                if (c != null) p.clips.add(EditorClip.fromJson(c));
+            }
+        }
         p.updatedAt = o.optLong("updatedAt", System.currentTimeMillis());
+        p.ensureClips();
         return p;
     }
 
