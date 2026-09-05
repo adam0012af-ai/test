@@ -23,6 +23,10 @@ public final class CreatorProject implements Serializable {
     public int startColor;
     public int endColor;
     public int durationSec;
+    public long trimStartMs;
+    public long trimEndMs;
+    public int sourceVolume = 100;
+    public int audioVolume = 100;
     public long updatedAt;
 
     public static CreatorProject fromTemplate(ReelTemplate t) {
@@ -43,6 +47,10 @@ public final class CreatorProject implements Serializable {
         p.startColor = t.startColor;
         p.endColor = t.endColor;
         p.durationSec = t.durationSec;
+        p.trimStartMs = 0;
+        p.trimEndMs = 0;
+        p.sourceVolume = 100;
+        p.audioVolume = 100;
         p.updatedAt = System.currentTimeMillis();
         return p;
     }
@@ -68,6 +76,10 @@ public final class CreatorProject implements Serializable {
             o.put("startColor", startColor);
             o.put("endColor", endColor);
             o.put("durationSec", durationSec);
+            o.put("trimStartMs", trimStartMs);
+            o.put("trimEndMs", trimEndMs);
+            o.put("sourceVolume", sourceVolume);
+            o.put("audioVolume", audioVolume);
             o.put("updatedAt", updatedAt);
         } catch (Exception ignored) {}
         return o;
@@ -92,10 +104,15 @@ public final class CreatorProject implements Serializable {
         p.visualSeed = o.optInt("visualSeed", Math.abs(p.templateId.hashCode()));
         p.startColor = o.optInt("startColor", 0xFF1357D5);
         p.endColor = o.optInt("endColor", 0xFF07152A);
-        p.durationSec = Math.max(6, o.optInt("durationSec", 15));
+        p.durationSec = Math.max(1, o.optInt("durationSec", 15));
+        p.trimStartMs = Math.max(0, o.optLong("trimStartMs", 0));
+        p.trimEndMs = Math.max(0, o.optLong("trimEndMs", 0));
+        p.sourceVolume = clamp(o.optInt("sourceVolume", 100));
+        p.audioVolume = clamp(o.optInt("audioVolume", 100));
         p.updatedAt = o.optLong("updatedAt", System.currentTimeMillis());
         return p;
     }
 
+    private static int clamp(int v) { return Math.max(0, Math.min(100, v)); }
     private static String safe(String s) { return s == null ? "" : s; }
 }
