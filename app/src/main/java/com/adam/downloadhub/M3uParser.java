@@ -1,5 +1,9 @@
 package com.adam.downloadhub;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -12,6 +16,61 @@ public final class M3uParser {
 
     private M3uParser() {}
 
+    public interface EntryConsumer {
+        void accept(Entry entry) throws Exception;
+    }
+
+    /**
+     * Memory-safe parser for very large M3U/M3U8 files.
+     * Only one line and one entry are held in memory at a time.
+     */
+    public static long parseStream(InputStream input, EntryConsumer consumer) throws Exception {
+        if (input == null) throw new IllegalArgumentException("مصدر M3U غير صالح");
+        if (consumer == null) throw new IllegalArgumentException("معالج M3U غير صالح");
+
+        long count = 0;
+        String currentInfo = null;
+        String currentName = null;
+        String currentGroup = null;
+
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(input, StandardCharsets.UTF_8), 64 * 1024)) {
+            String raw;
+            while ((raw = reader.readLine()) != null) {
+                String line = raw.trim();
+                if (line.startsWith("\uFEFF")) line = line.substring(1).trim();
+                if (line.isEmpty()) continue;
+
+                if (line.startsWith("#EXTINF")) {
+                    currentInfo = line;
+                    currentGroup = attr(line, "group-title");
+                    int comma = line.indexOf(',');
+                    currentName = comma >= 0 && comma + 1 < line.length()
+                            ? line.substring(comma + 1).trim()
+                            : attr(line, "tvg-name");
+                    if (currentName == null || currentName.isEmpty()) currentName = "بدون اسم";
+                    continue;
+                }
+
+                if (line.startsWith("#")) continue;
+
+                if (currentInfo != null) {
+                    consumer.accept(new Entry(
+                            currentName,
+                            currentGroup == null ? "" : currentGroup,
+                            line,
+                            currentInfo));
+                    count++;
+                    currentInfo = null;
+                    currentName = null;
+                    currentGroup = null;
+                }
+            }
+        }
+        return count;
+    }
+
+    // Kept for compatibility with smaller in-memory inputs.
     public static List<Entry> parse(String content) {
         List<Entry> out = new ArrayList<>();
         if (content == null) return out;
@@ -37,13 +96,11 @@ public final class M3uParser {
             }
 
             if (line.startsWith("#")) continue;
-            if (line.startsWith("http://") || line.startsWith("https://")) {
-                if (currentInfo != null) {
-                    out.add(new Entry(currentName, currentGroup == null ? "" : currentGroup, line, currentInfo));
-                    currentInfo = null;
-                    currentName = null;
-                    currentGroup = null;
-                }
+            if (currentInfo != null) {
+                out.add(new Entry(currentName, currentGroup == null ? "" : currentGroup, line, currentInfo));
+                currentInfo = null;
+                currentName = null;
+                currentGroup = null;
             }
         }
         return out;
@@ -60,7 +117,7 @@ public final class M3uParser {
         return r;
     }
 
-    private static Type classifyOne(Entry e) {
+    public static Type classifyOne(Entry e) {
         String s = (e.name + " " + e.group + " " + e.url).toLowerCase(Locale.ROOT);
 
         if (containsAny(s,
@@ -99,7 +156,7 @@ public final class M3uParser {
         return "";
     }
 
-    private enum Type { CHANNEL, MOVIE, SERIES }
+    public enum Type { CHANNEL, MOVIE, SERIES }
 
     public static final class Entry {
         public final String name;
