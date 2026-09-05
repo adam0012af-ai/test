@@ -23,6 +23,15 @@ public final class ReelTemplate implements Serializable {
     public ReelTemplate(String id, String categoryKey, String categoryName, String name,
                         String hook, String body, String cta, String hashtags,
                         String layout, String motion, String captionStyle,
+                        int startColor, int endColor, int durationSec, boolean islamic) {
+        this(id, categoryKey, categoryName, name, hook, body, cta, hashtags,
+                layout, motion, captionStyle, startColor, endColor, durationSec,
+                islamic, Math.abs((id == null ? "template" : id).hashCode()));
+    }
+
+    public ReelTemplate(String id, String categoryKey, String categoryName, String name,
+                        String hook, String body, String cta, String hashtags,
+                        String layout, String motion, String captionStyle,
                         int startColor, int endColor, int durationSec, boolean islamic,
                         int visualSeed) {
         this.id = id;
