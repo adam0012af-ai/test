@@ -12,19 +12,11 @@ import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import org.json.JSONObject;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Locale;
 
-/**
- * Production entry point for the editor.
- *
- * ProfessionalEditorActivity owns the editing engine. This class gives that engine
- * a compact mobile-editor workspace and adds a proper export chooser without
- * duplicating the media/timeline implementation.
- */
+/** Production editor entry point built on the full timeline engine. */
 public class TemplateEditorActivity extends ProfessionalEditorActivity {
     private final Handler ui = new Handler(Looper.getMainLooper());
     private boolean destroyed;
@@ -58,7 +50,6 @@ public class TemplateEditorActivity extends ProfessionalEditorActivity {
             LinearLayout page = (LinearLayout) first;
             page.setPadding(Ui.dp(this, 6), Ui.dp(this, 3), Ui.dp(this, 6), Ui.dp(this, 3));
 
-            // Compact top bar: no wrapped title and no dead space.
             if (page.getChildCount() > 0 && page.getChildAt(0) instanceof LinearLayout) {
                 LinearLayout top = (LinearLayout) page.getChildAt(0);
                 top.setGravity(Gravity.CENTER_VERTICAL);
@@ -87,7 +78,6 @@ public class TemplateEditorActivity extends ProfessionalEditorActivity {
                 frame.setElevation(Ui.dp(this, 2));
             }
 
-            // Conventional left-to-right editing timeline even when labels are Arabic.
             LinearLayout strip = field("clipStrip", LinearLayout.class);
             if (strip != null) {
                 strip.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
@@ -98,7 +88,6 @@ public class TemplateEditorActivity extends ProfessionalEditorActivity {
             LinearLayout layers = field("layersRow", LinearLayout.class);
             if (layers != null) layers.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
 
-            // Make the bottom tool rail feel like an editor toolbar, not large form buttons.
             if (page.getChildCount() > 0) {
                 View last = page.getChildAt(page.getChildCount() - 1);
                 if (last instanceof HorizontalScrollView) {
@@ -202,9 +191,7 @@ public class TemplateEditorActivity extends ProfessionalEditorActivity {
         return type.isInstance(o) ? type.cast(o) : null;
     }
 
-    private void invokeParent(String name) {
-        invokeParent(name, new Class[0], new Object[0]);
-    }
+    private void invokeParent(String name) { invokeParent(name, new Class[0], new Object[0]); }
 
     private void invokeParent(String name, Class<?>[] types, Object[] args) {
         try {
@@ -215,8 +202,12 @@ public class TemplateEditorActivity extends ProfessionalEditorActivity {
     }
 
     private Object invokeParentForResult(String name) throws Exception {
-        Method m = ProfessionalEditorActivity.class.getDeclaredMethod(name);
-        m.setAccessible(true);
-        return m.invoke(this);
+        try {
+            Method m = ProfessionalEditorActivity.class.getDeclaredMethod(name);
+            m.setAccessible(true);
+            return m.invoke(this);
+        } catch (ReflectiveOperationException e) {
+            throw new Exception(e);
+        }
     }
 }
