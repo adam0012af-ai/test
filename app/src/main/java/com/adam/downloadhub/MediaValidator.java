@@ -1,7 +1,6 @@
 package com.adam.downloadhub;
 
 import java.net.HttpURLConnection;
-import java.net.URI;
 import java.net.URL;
 import java.util.Locale;
 import java.util.regex.Matcher;
@@ -12,6 +11,10 @@ public final class MediaValidator {
     private MediaValidator() {}
 
     public static ProbeResult probe(String url, String referer, String cookie) {
+        return probeMedia(url, referer, cookie, false);
+    }
+
+    public static ProbeResult probeMedia(String url, String referer, String cookie, boolean allowAudio) {
         String structural = structuralProblem(url);
         if (structural != null) return ProbeResult.bad(structural);
 
@@ -42,23 +45,30 @@ public final class MediaValidator {
             long size = fullSize(c);
 
             if (type.contains("mpegurl") || type.contains("dash+xml"))
-                return ProbeResult.bad("المصدر قائمة بث مجزأ وليس ملف فيديو كامل");
-            if (type.startsWith("audio/"))
-                return ProbeResult.bad("المصدر صوت فقط وليس فيديو كاملًا");
+                return ProbeResult.bad("المصدر قائمة بث مجزأ وليس ملف وسائط كامل");
             if (type.startsWith("text/") || type.contains("html") || type.contains("json") || type.contains("javascript"))
-                return ProbeResult.bad("الرابط لا يعيد ملف فيديو صالحًا");
+                return ProbeResult.bad("الرابط لا يعيد ملف وسائط صالحًا");
 
+            boolean audioMime = type.startsWith("audio/");
             boolean videoMime = type.startsWith("video/");
+            boolean audioName = looksAudioFile(finalUrl) || looksAudioFile(disposition);
             boolean videoName = looksVideoFile(finalUrl) || looksVideoFile(disposition);
-            boolean binaryVideo = (type.isEmpty() || type.contains("octet-stream")) && videoName;
-            if (!videoMime && !binaryVideo)
-                return ProbeResult.bad("لم يتم التأكد أن المصدر ملف فيديو كامل");
+            boolean genericBinary = type.isEmpty() || type.contains("octet-stream");
+
+            if (audioMime || (genericBinary && audioName)) {
+                if (!allowAudio) return ProbeResult.bad("المصدر صوت فقط وليس فيديو كاملًا");
+                if (size > 0 && size < 8 * 1024L) return ProbeResult.bad("حجم ملف الصوت صغير جدًا ويبدو جزءًا غير مكتمل");
+                return ProbeResult.good(finalUrl, type.isEmpty() ? "audio/*" : type, size, true);
+            }
+
+            if (!videoMime && !(genericBinary && videoName))
+                return ProbeResult.bad("لم يتم التأكد أن المصدر ملف فيديو/صوت كامل");
             if (size > 0 && size < 64 * 1024L)
                 return ProbeResult.bad("حجم المصدر صغير جدًا ويبدو جزءًا من الفيديو");
 
-            return ProbeResult.good(finalUrl, type, size);
+            return ProbeResult.good(finalUrl, type, size, false);
         } catch (Exception e) {
-            return ProbeResult.bad("تعذر التحقق من الفيديو: " + safeMessage(e));
+            return ProbeResult.bad("تعذر التحقق من الوسائط: " + safeMessage(e));
         } finally {
             if (c != null) c.disconnect();
         }
@@ -74,9 +84,7 @@ public final class MediaValidator {
                 || hasParam(l, "range") || hasParam(l, "segment")
                 || hasParam(l, "fragment") || hasParam(l, "frag")
                 || hasParam(l, "part") || hasParam(l, "sq"))
-            return "تم رصد جزء/Segment من البث وليس ملف فيديو كامل";
-        if (l.contains("mime=audio") || l.contains("mime%3daudio"))
-            return "تم رصد مسار صوت منفصل وليس فيديو كامل";
+            return "تم رصد جزء/Segment من البث وليس ملف وسائط كامل";
         return null;
     }
 
@@ -85,6 +93,13 @@ public final class MediaValidator {
         String l = value.toLowerCase(Locale.ROOT);
         return l.matches(".*\\.(mp4|m4v|webm|mov|mkv|avi)(?:[?&#;\"'].*)?$")
                 || (l.contains("filename=") && (l.contains(".mp4") || l.contains(".webm") || l.contains(".mkv")));
+    }
+
+    public static boolean looksAudioFile(String value) {
+        if (value == null) return false;
+        String l = value.toLowerCase(Locale.ROOT);
+        return l.matches(".*\\.(m4a|mp3|aac|ogg|opus|wav|flac)(?:[?&#;\"'].*)?$")
+                || (l.contains("filename=") && (l.contains(".m4a") || l.contains(".mp3") || l.contains(".aac") || l.contains(".opus")));
     }
 
     private static boolean hasParam(String lowerUrl, String name) {
@@ -114,23 +129,28 @@ public final class MediaValidator {
         public final String contentType;
         public final long sizeBytes;
         public final String reason;
+        public final boolean audioOnly;
 
-        private ProbeResult(boolean valid, String finalUrl, String contentType, long sizeBytes, String reason) {
+        private ProbeResult(boolean valid, String finalUrl, String contentType, long sizeBytes, String reason, boolean audioOnly) {
             this.valid = valid;
             this.finalUrl = finalUrl == null ? "" : finalUrl;
             this.contentType = contentType == null ? "" : contentType;
             this.sizeBytes = sizeBytes;
             this.reason = reason == null ? "" : reason;
+            this.audioOnly = audioOnly;
         }
 
-        static ProbeResult good(String url, String type, long size) { return new ProbeResult(true, url, type, size, ""); }
-        static ProbeResult bad(String reason) { return new ProbeResult(false, "", "", -1L, reason); }
+        static ProbeResult good(String url, String type, long size, boolean audioOnly) {
+            return new ProbeResult(true, url, type, size, "", audioOnly);
+        }
+        static ProbeResult bad(String reason) { return new ProbeResult(false, "", "", -1L, reason, false); }
 
         public String summary() {
             if (!valid) return reason;
-            if (sizeBytes <= 0) return "تم التحقق من ملف الفيديو ✅";
+            String kind = audioOnly ? "ملف الصوت" : "ملف الفيديو";
+            if (sizeBytes <= 0) return "تم التحقق من " + kind + " ✅";
             double mb = sizeBytes / 1024.0 / 1024.0;
-            return String.format(Locale.US, "تم التحقق من ملف الفيديو ✅ • %.1f MB", mb);
+            return String.format(Locale.US, "تم التحقق من %s ✅ • %.1f MB", kind, mb);
         }
     }
 }
