@@ -15,8 +15,18 @@ android {
         applicationId 'com.adam.downloadhub'
         minSdk 29
         targetSdk 35
-        versionCode 62
-        versionName '6.0.2'
+        versionCode 63
+        versionName '6.0.3-test'
+
+        // Temporary lightweight test build: modern phones only.
+        // Full multi-ABI packaging is restored for the final release.
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
+
+        // Search/yt-dlp stays in source but is paused while Creator is being tested.
+        buildConfigField 'boolean', 'SEARCH_ENABLED', 'false'
+        buildConfigField 'boolean', 'YTDLP_ENABLED', 'false'
 
         // Public identifiers can be injected at build time. Secrets/tokens are never stored in the APK.
         buildConfigField 'String', 'YOUTUBE_CLIENT_ID', '"' + envOrEmpty('YOUTUBE_CLIENT_ID') + '"'
@@ -33,6 +43,14 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    // yt-dlp/Python binaries are not needed in this temporary test build.
+    // The Java source and dependency are kept so search can be switched back on later.
+    packaging {
+        jniLibs {
+            excludes += ['**/libpython.so', '**/libpython.zip.so', '**/libqjs.so']
         }
     }
 
