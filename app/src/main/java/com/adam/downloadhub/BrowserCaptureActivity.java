@@ -30,6 +30,7 @@ import java.util.Locale;
 
 public class BrowserCaptureActivity extends Activity {
     public static final String EXTRA_URL = "url";
+    public static final String EXTRA_TIKTOK_CLEAN = "tiktok_clean";
     private WebView webView;
     private TextView status;
     private EditText address;
@@ -37,10 +38,11 @@ public class BrowserCaptureActivity extends Activity {
     private volatile String lastMediaUrl = "";
     private volatile String lastMediaReferer = "";
     private boolean autoTried;
+    private boolean tikTokCleanMode;
 
     @Override protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);getWindow().setStatusBarColor(Ui.BG);getWindow().setNavigationBarColor(Ui.BG);
-        sourceUrl=getIntent().getStringExtra(EXTRA_URL);if(sourceUrl==null||(!sourceUrl.startsWith("http://")&&!sourceUrl.startsWith("https://")))sourceUrl="https://www.google.com";
+        sourceUrl=getIntent().getStringExtra(EXTRA_URL);tikTokCleanMode=getIntent().getBooleanExtra(EXTRA_TIKTOK_CLEAN,false);if(sourceUrl==null||(!sourceUrl.startsWith("http://")&&!sourceUrl.startsWith("https://")))sourceUrl="https://www.google.com";
         setContentView(buildUi());setupWebView();address.setText(sourceUrl);webView.loadUrl(sourceUrl);
     }
 
@@ -53,9 +55,9 @@ public class BrowserCaptureActivity extends Activity {
         address=new EditText(this);address.setSingleLine(true);address.setTextSize(12);address.setTextColor(Ui.TEXT);address.setHintTextColor(Ui.MUTED);address.setTextDirection(View.TEXT_DIRECTION_LTR);address.setPadding(Ui.dp(this,10),0,Ui.dp(this,10),0);address.setBackground(Ui.bordered(Color.rgb(7,13,23),Ui.BORDER,1,13,this));LinearLayout.LayoutParams adp=new LinearLayout.LayoutParams(0,Ui.dp(this,44),1f);adp.setMargins(Ui.dp(this,7),0,0,0);nav.addView(address,adp);
         Button go=Ui.primary(this,"فتح");go.setOnClickListener(v->loadAddress());LinearLayout.LayoutParams gp=new LinearLayout.LayoutParams(Ui.dp(this,64),Ui.dp(this,44));gp.setMargins(Ui.dp(this,7),0,0,0);nav.addView(go,gp);top.addView(nav);
 
-        status=Ui.text(this,"شغّل الفيديو؛ التطبيق يراقب روابط الوسائط تلقائيًا.",12,Ui.MUTED,false);status.setGravity(Gravity.CENTER);LinearLayout.LayoutParams sp=Ui.matchWrap();sp.setMargins(0,Ui.dp(this,8),0,Ui.dp(this,7));top.addView(status,sp);
+        status=Ui.text(this,tikTokCleanMode?"TikTok Clean Mode — شغّل الفيديو وسيتم التقاط مصدر التشغيل بدون علامة مائية عند توفره.":"شغّل الفيديو؛ التطبيق يراقب روابط الوسائط تلقائيًا.",12,tikTokCleanMode?Ui.CYAN:Ui.MUTED,false);status.setGravity(Gravity.CENTER);LinearLayout.LayoutParams sp=Ui.matchWrap();sp.setMargins(0,Ui.dp(this,8),0,Ui.dp(this,7));top.addView(status,sp);
         LinearLayout actions=new LinearLayout(this);actions.setOrientation(LinearLayout.HORIZONTAL);
-        Button capture=Ui.primary(this,"التقاط وتحميل");capture.setOnClickListener(v->captureCurrentVideo(false));actions.addView(capture,new LinearLayout.LayoutParams(0,Ui.dp(this,48),1.3f));
+        Button capture=Ui.primary(this,tikTokCleanMode?"تحميل بدون علامة":"التقاط وتحميل");capture.setOnClickListener(v->captureCurrentVideo(false));actions.addView(capture,new LinearLayout.LayoutParams(0,Ui.dp(this,48),1.3f));
         Button reload=Ui.secondary(this,"تحديث");reload.setOnClickListener(v->webView.reload());LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(0,Ui.dp(this,48),.8f);rp.setMargins(Ui.dp(this,7),0,0,0);actions.addView(reload,rp);
         Button downloads=Ui.secondary(this,"التحميلات");downloads.setOnClickListener(v->startActivity(new android.content.Intent(this,DownloadsActivity.class)));LinearLayout.LayoutParams dp=new LinearLayout.LayoutParams(0,Ui.dp(this,48),1f);dp.setMargins(Ui.dp(this,7),0,0,0);actions.addView(downloads,dp);top.addView(actions);root.addView(top);
         webView=new WebView(this);root.addView(webView,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,1f));return root;
@@ -68,10 +70,10 @@ public class BrowserCaptureActivity extends Activity {
         webView.setWebViewClient(new WebViewClient(){
             @Override public boolean shouldOverrideUrlLoading(WebView view,WebResourceRequest request){return false;}
             @Override public WebResourceResponse shouldInterceptRequest(WebView view,WebResourceRequest request){
-                try{String u=request.getUrl().toString();if(looksMedia(u)){lastMediaUrl=u;lastMediaReferer=view.getUrl()==null?sourceUrl:view.getUrl();runOnUiThread(()->status.setText("تم رصد مصدر وسائط — يمكنك الضغط على التقاط وتحميل"));}}catch(Exception ignored){}
+                try{String u=request.getUrl().toString();if(tikTokCleanMode?looksTikTokCleanMedia(u):looksMedia(u)){lastMediaUrl=u;lastMediaReferer=view.getUrl()==null?sourceUrl:view.getUrl();runOnUiThread(()->status.setText(tikTokCleanMode?"تم رصد مصدر تشغيل TikTok نظيف ✅ اضغط تحميل بدون علامة":"تم رصد مصدر وسائط — يمكنك الضغط على التقاط وتحميل"));}}catch(Exception ignored){}
                 return super.shouldInterceptRequest(view,request);
             }
-            @Override public void onPageFinished(WebView view,String url){super.onPageFinished(view,url);address.setText(url);status.setText("الصفحة جاهزة — شغّل الفيديو ليظهر مصدره");if(!autoTried){autoTried=true;view.postDelayed(()->captureCurrentVideo(true),2000L);}}
+            @Override public void onPageFinished(WebView view,String url){super.onPageFinished(view,url);address.setText(url);status.setText(tikTokCleanMode?"TikTok جاهز — شغّل الفيديو عدة ثوانٍ ليظهر مصدر التشغيل النظيف":"الصفحة جاهزة — شغّل الفيديو ليظهر مصدره");if(!autoTried){autoTried=true;view.postDelayed(()->captureCurrentVideo(true),tikTokCleanMode?3200L:2000L);}}
         });
     }
 
@@ -80,10 +82,11 @@ public class BrowserCaptureActivity extends Activity {
     private void captureCurrentVideo(boolean automatic){
         status.setText(automatic?"فحص مصدر الفيديو تلقائيًا…":"جاري فحص مصدر الفيديو…");
         String js="(function(){var u='';var vs=document.querySelectorAll('video');for(var i=0;i<vs.length;i++){var x=vs[i].currentSrc||vs[i].src||'';if(x&&x.indexOf('blob:')!==0){u=x;break;}}if(!u){var ss=document.querySelectorAll('video source');for(var j=0;j<ss.length;j++){var y=ss[j].src||ss[j].getAttribute('src')||'';if(y&&y.indexOf('blob:')!==0){u=y;break;}}}if(!u){var m=document.querySelector('meta[property=\\\"og:video:secure_url\\\"],meta[property=\\\"og:video:url\\\"],meta[property=\\\"og:video\\\"]');if(m)u=m.content||'';}return u;})()";
-        webView.evaluateJavascript(js,value->{String url=decodeJsString(value);if(!isHttp(url)&&isHttp(lastMediaUrl))url=lastMediaUrl;if(!isHttp(url)){if(!automatic)status.setText("لم يتم رصد رابط مباشر بعد. شغّل الفيديو ثم جرّب مرة أخرى.");return;}String lower=url.toLowerCase(Locale.ROOT);if(lower.contains(".m3u8")){status.setText("تم رصد بث HLS. يحتاج محرك تنزيل ودمج منفصل وسنضيفه في مرحلة تنزيلات البث.");return;}String name=DownloadUtil.guessFileName(url,"captured_video.mp4");status.setText("تم رصد الفيديو وبدأ التحميل ✅");enqueue(url,name,isHttp(lastMediaReferer)?lastMediaReferer:webView.getUrl());});
+        webView.evaluateJavascript(js,value->{String url=decodeJsString(value);if(tikTokCleanMode){if(isHttp(lastMediaUrl))url=lastMediaUrl;else if(!looksTikTokCleanMedia(url))url="";}else if(!isHttp(url)&&isHttp(lastMediaUrl))url=lastMediaUrl;if(!isHttp(url)){if(!automatic)status.setText(tikTokCleanMode?"لم يظهر مصدر تشغيل نظيف بعد. شغّل فيديو TikTok لعدة ثوانٍ ثم جرّب مرة أخرى.":"لم يتم رصد رابط مباشر بعد. شغّل الفيديو ثم جرّب مرة أخرى.");return;}String lower=url.toLowerCase(Locale.ROOT);if(lower.contains(".m3u8")){status.setText("تم رصد بث HLS. يحتاج محرك تنزيل ودمج منفصل وسنضيفه في مرحلة تنزيلات البث.");return;}String name=tikTokCleanMode?"TikTok_no_watermark_"+System.currentTimeMillis()+".mp4":DownloadUtil.guessFileName(url,"captured_video.mp4");status.setText(tikTokCleanMode?"تم العثور على نسخة التشغيل بدون علامة وبدأ التحميل ✅":"تم رصد الفيديو وبدأ التحميل ✅");enqueue(url,name,isHttp(lastMediaReferer)?lastMediaReferer:webView.getUrl());});
     }
 
-    private boolean looksMedia(String u){String l=u.toLowerCase(Locale.ROOT);return l.matches(".*\\.(mp4|m4v|webm|mov|mkv|avi|mp3|m4a|aac)(\\?.*)?$")||l.contains(".m3u8")||l.contains("mime=video")||l.contains("video_mp4");}
+    private boolean looksMedia(String u){String l=u.toLowerCase(Locale.ROOT);return l.matches(".*\\.(mp4|m4v|webm|mov|mkv|avi|mp3|m4a|aac)(\\?.*)?$")||l.contains(".m3u8")||l.contains("mime=video")||l.contains("video_mp4")||l.contains("mime_type=video_")||l.contains("/video/tos/");}
+    private boolean looksTikTokCleanMedia(String u){if(!isHttp(u))return false;String l=u.toLowerCase(Locale.ROOT);boolean cdn=l.contains("tiktokcdn")||l.contains("tiktokv")||l.contains("bytevc")||l.contains("tos-maliva")||l.contains("tos-useast")||l.contains("/video/tos/")||l.contains("mime_type=video_")||l.contains("video_mp4");boolean blocked=l.contains("watermark=1")||l.contains("watermark%3d1")||l.contains("downloadaddr")||l.contains("/download/");return cdn&&!blocked&&!l.contains(".m3u8");}
     private boolean isHttp(String s){return s!=null&&(s.startsWith("http://")||s.startsWith("https://"));}
     private String decodeJsString(String value){if(value==null||"null".equals(value)||"undefined".equals(value))return"";try{return new JSONArray("["+value+"]").optString(0,"");}catch(Exception e){return value.replace("\\\"","\"").replace("\\/","/").replaceAll("^\"|\"$","");}}
 
