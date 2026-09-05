@@ -9,21 +9,28 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 public final class Ui {
-    public static final int BG = Color.rgb(6, 10, 18);
-    public static final int SURFACE = Color.rgb(13, 20, 32);
-    public static final int SURFACE_2 = Color.rgb(18, 28, 44);
-    public static final int BORDER = Color.rgb(38, 58, 82);
+    public static final int BG = Color.rgb(5, 12, 24);
+    public static final int BG_2 = Color.rgb(7, 18, 35);
+    public static final int SURFACE = Color.rgb(11, 24, 43);
+    public static final int SURFACE_2 = Color.rgb(17, 33, 56);
+    public static final int SURFACE_3 = Color.rgb(22, 43, 71);
+    public static final int BORDER = Color.rgb(36, 67, 103);
+    public static final int BORDER_SOFT = Color.rgb(27, 49, 78);
     public static final int TEXT = Color.rgb(246, 249, 255);
-    public static final int MUTED = Color.rgb(151, 166, 188);
-    public static final int BLUE = Color.rgb(36, 119, 255);
-    public static final int CYAN = Color.rgb(17, 214, 255);
-    public static final int GREEN = Color.rgb(87, 220, 154);
-    public static final int YELLOW = Color.rgb(255, 200, 88);
-    public static final int RED = Color.rgb(245, 105, 120);
+    public static final int MUTED = Color.rgb(153, 173, 199);
+    public static final int MUTED_2 = Color.rgb(109, 135, 168);
+    public static final int BLUE = Color.rgb(18, 102, 255);
+    public static final int BLUE_2 = Color.rgb(48, 137, 255);
+    public static final int CYAN = Color.rgb(24, 216, 255);
+    public static final int GREEN = Color.rgb(72, 222, 153);
+    public static final int YELLOW = Color.rgb(255, 199, 82);
+    public static final int RED = Color.rgb(248, 102, 121);
+    public static final int PURPLE = Color.rgb(128, 98, 255);
 
     private Ui() {}
 
@@ -51,13 +58,27 @@ public final class Ui {
         return d;
     }
 
+    public static GradientDrawable gradient3(int a, int b, int c3, int radiusDp, Context c) {
+        GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{a, b, c3});
+        d.setCornerRadius(dp(c, radiusDp));
+        return d;
+    }
+
     public static TextView text(Context c, String value, int sp, int color, boolean bold) {
         TextView t = new TextView(c);
         t.setText(value);
         t.setTextSize(sp);
         t.setTextColor(color);
         t.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        t.setIncludeFontPadding(false);
         if (bold) t.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        return t;
+    }
+
+    public static TextView sectionTitle(Context c, String value) {
+        TextView t = text(c, value, 18, TEXT, true);
+        t.setLetterSpacing(0.01f);
         return t;
     }
 
@@ -69,9 +90,17 @@ public final class Ui {
         b.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         b.setAllCaps(false);
         b.setGravity(Gravity.CENTER);
+        b.setPadding(dp(c, 12), 0, dp(c, 12), 0);
         b.setBackgroundTintList(ColorStateList.valueOf(Color.TRANSPARENT));
-        b.setBackground(gradient(BLUE, Color.rgb(35, 86, 226), 16, c));
+        b.setBackground(gradient(BLUE_2, BLUE, 17, c));
         b.setStateListAnimator(null);
+        return b;
+    }
+
+    public static Button accent(Context c, String label) {
+        Button b = primary(c, label);
+        b.setTextColor(Color.rgb(3, 25, 39));
+        b.setBackground(gradient(Color.rgb(63, 235, 255), CYAN, 17, c));
         return b;
     }
 
@@ -82,19 +111,76 @@ public final class Ui {
         b.setTextSize(13);
         b.setAllCaps(false);
         b.setGravity(Gravity.CENTER);
+        b.setPadding(dp(c, 10), 0, dp(c, 10), 0);
         b.setBackgroundTintList(ColorStateList.valueOf(Color.TRANSPARENT));
-        b.setBackground(bordered(SURFACE_2, BORDER, 1, 14, c));
+        b.setBackground(bordered(SURFACE_2, BORDER, 1, 15, c));
         b.setStateListAnimator(null);
         return b;
+    }
+
+    public static Button ghost(Context c, String label) {
+        Button b = secondary(c, label);
+        b.setTextColor(CYAN);
+        b.setBackground(bordered(Color.TRANSPARENT, BORDER_SOFT, 1, 14, c));
+        return b;
+    }
+
+    public static TextView chip(Context c, String label, int accent) {
+        TextView t = text(c, label, 11, accent, true);
+        t.setGravity(Gravity.CENTER);
+        t.setPadding(dp(c, 10), dp(c, 7), dp(c, 10), dp(c, 7));
+        t.setBackground(bordered(Color.argb(35, Color.red(accent), Color.green(accent), Color.blue(accent)),
+                Color.argb(100, Color.red(accent), Color.green(accent), Color.blue(accent)), 1, 40, c));
+        return t;
     }
 
     public static LinearLayout card(Context c) {
         LinearLayout l = new LinearLayout(c);
         l.setOrientation(LinearLayout.VERTICAL);
         l.setPadding(dp(c, 16), dp(c, 16), dp(c, 16), dp(c, 16));
-        l.setBackground(bordered(SURFACE, BORDER, 1, 20, c));
+        l.setBackground(bordered(SURFACE, BORDER_SOFT, 1, 21, c));
         l.setElevation(dp(c, 2));
         return l;
+    }
+
+    public static EditText input(Context c, String hint, boolean multiline) {
+        EditText e = new EditText(c);
+        e.setHint(hint);
+        e.setTextColor(TEXT);
+        e.setHintTextColor(MUTED_2);
+        e.setTextSize(14);
+        e.setPadding(dp(c, 14), dp(c, 12), dp(c, 14), dp(c, 12));
+        e.setBackground(bordered(Color.rgb(6, 16, 31), BORDER, 1, 16, c));
+        e.setSingleLine(!multiline);
+        if (multiline) {
+            e.setMinLines(3);
+            e.setMaxLines(6);
+            e.setGravity(Gravity.TOP | Gravity.START);
+        }
+        return e;
+    }
+
+    public static LinearLayout topBar(Context c, String title, String sub, View.OnClickListener back) {
+        LinearLayout row = new LinearLayout(c);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        if (back != null) {
+            Button b = ghost(c, "‹");
+            b.setTextSize(26);
+            b.setOnClickListener(back);
+            row.addView(b, new LinearLayout.LayoutParams(dp(c, 48), dp(c, 46)));
+        }
+        LinearLayout texts = new LinearLayout(c);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        TextView a = text(c, title, 22, TEXT, true);
+        a.setGravity(Gravity.START);
+        texts.addView(a);
+        if (sub != null && !sub.isEmpty()) texts.addView(text(c, sub, 11, MUTED, false));
+        LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        tp.setMargins(dp(c, 10), 0, 0, 0);
+        row.addView(texts, tp);
+        return row;
     }
 
     public static LinearLayout.LayoutParams matchWrap() {
