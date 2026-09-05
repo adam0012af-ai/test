@@ -12,6 +12,10 @@ public final class EditorClip implements Serializable {
     public long stillDurationMs = 3000;
     public int volume = 100;
     public float speed = 1f;
+    public int rotation = 0;
+    public int zoom = 100;
+    public boolean mirror = false;
+    public String filter = "None";
 
     public EditorClip() {}
 
@@ -28,6 +32,10 @@ public final class EditorClip implements Serializable {
         c.stillDurationMs = stillDurationMs;
         c.volume = volume;
         c.speed = speed;
+        c.rotation = rotation;
+        c.zoom = zoom;
+        c.mirror = mirror;
+        c.filter = filter;
         return c;
     }
 
@@ -41,6 +49,10 @@ public final class EditorClip implements Serializable {
             o.put("stillDurationMs", Math.max(500, stillDurationMs));
             o.put("volume", clamp(volume));
             o.put("speed", clampSpeed(speed));
+            o.put("rotation", normalizeRotation(rotation));
+            o.put("zoom", Math.max(100, Math.min(180, zoom)));
+            o.put("mirror", mirror);
+            o.put("filter", filter == null ? "None" : filter);
         } catch (Exception ignored) {}
         return o;
     }
@@ -54,6 +66,10 @@ public final class EditorClip implements Serializable {
         c.stillDurationMs = Math.max(500, o.optLong("stillDurationMs", 3000));
         c.volume = clamp(o.optInt("volume", 100));
         c.speed = clampSpeed((float) o.optDouble("speed", 1.0));
+        c.rotation = normalizeRotation(o.optInt("rotation", 0));
+        c.zoom = Math.max(100, Math.min(180, o.optInt("zoom", 100)));
+        c.mirror = o.optBoolean("mirror", false);
+        c.filter = o.optString("filter", "None");
         return c;
     }
 
@@ -62,5 +78,13 @@ public final class EditorClip implements Serializable {
         if (v < .5f) return .5f;
         if (v > 2f) return 2f;
         return v;
+    }
+    public static int normalizeRotation(int v) {
+        int r = ((v % 360) + 360) % 360;
+        if (r < 45) return 0;
+        if (r < 135) return 90;
+        if (r < 225) return 180;
+        if (r < 315) return 270;
+        return 0;
     }
 }
