@@ -1,15 +1,18 @@
 package com.adam.downloadhub;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -40,15 +43,32 @@ public class UniversalSearchActivity extends Activity {
     private View buildUi(){
         LinearLayout page=new LinearLayout(this);page.setOrientation(LinearLayout.VERTICAL);page.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);page.setBackground(Ui.gradient(Ui.BG,Ui.BG_2,0,this));page.setPadding(Ui.dp(this,16),Ui.dp(this,16),Ui.dp(this,16),0);
         page.addView(Ui.topBar(this,"بحث وتحميل","ابحث باسم الفيديو بدون رابط",v->finish()));
+
         LinearLayout box=Ui.card(this);LinearLayout.LayoutParams bp=Ui.matchWrap();bp.setMargins(0,Ui.dp(this,14),0,0);box.setLayoutParams(bp);
-        query=Ui.input(this,"اكتب اسم فيديو، قناة أو موضوع…",false);box.addView(query,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,54)));
-        searchButton=Ui.accent(this,"⌕  بحث");searchButton.setOnClickListener(v->search());LinearLayout.LayoutParams sp=Ui.matchWrap();sp.height=Ui.dp(this,54);sp.setMargins(0,Ui.dp(this,9),0,0);box.addView(searchButton,sp);page.addView(box);
-        status=Ui.text(this,"اكتب ما تبحث عنه ثم اضغط بحث",12,Ui.MUTED,false);status.setGravity(Gravity.CENTER);LinearLayout.LayoutParams st=Ui.matchWrap();st.setMargins(0,Ui.dp(this,10),0,Ui.dp(this,8));page.addView(status,st);
+        LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.HORIZONTAL);row.setGravity(Gravity.CENTER_VERTICAL);
+
+        query=Ui.input(this,"اكتب اسم فيديو، قناة أو موضوع…",false);
+        query.setSingleLine(true);
+        query.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        query.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+        query.setOnEditorActionListener((v,actionId,event)->{
+            if(actionId==EditorInfo.IME_ACTION_SEARCH || (event!=null&&event.getKeyCode()==android.view.KeyEvent.KEYCODE_ENTER)){
+                search();return true;
+            }
+            return false;
+        });
+        row.addView(query,new LinearLayout.LayoutParams(0,Ui.dp(this,54),1f));
+
+        searchButton=Ui.accent(this,"بحث");searchButton.setTextSize(14);searchButton.setOnClickListener(v->search());
+        LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(Ui.dp(this,96),Ui.dp(this,54));sp.setMargins(Ui.dp(this,8),0,0,0);row.addView(searchButton,sp);
+        box.addView(row);page.addView(box);
+
+        status=Ui.text(this,"اكتب ما تبحث عنه ثم اضغط بحث أو زر البحث في الكيبورد",12,Ui.MUTED,false);status.setGravity(Gravity.CENTER);LinearLayout.LayoutParams st=Ui.matchWrap();st.setMargins(0,Ui.dp(this,10),0,Ui.dp(this,8));page.addView(status,st);
         ScrollView scroll=new ScrollView(this);results=new LinearLayout(this);results.setOrientation(LinearLayout.VERTICAL);results.setPadding(0,0,0,Ui.dp(this,28));scroll.addView(results,new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT));page.addView(scroll,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,1f));return page;
     }
 
     private void search(){
-        String q=query.getText().toString().trim();if(q.length()<2){toast("اكتب كلمة بحث");return;}setBusy(true);status.setText("جاري البحث بالمحرك المتقدم…");results.removeAllViews();
+        String q=query.getText().toString().trim();if(q.length()<2){toast("اكتب كلمة بحث");return;}hideKeyboard();setBusy(true);status.setText("جاري البحث بالمحرك المتقدم…");results.removeAllViews();
         executor.execute(()->{
             try{
                 YoutubeDL.getInstance().init(getApplicationContext());
@@ -58,6 +78,8 @@ public class UniversalSearchActivity extends Activity {
             }catch(Throwable e){String m=e.getMessage();runOnUiThread(()->{setBusy(false);status.setText("تعذر البحث: "+shortMsg(m));});}
         });
     }
+
+    private void hideKeyboard(){try{InputMethodManager im=(InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);if(im!=null)im.hideSoftInputFromWindow(query.getWindowToken(),0);query.clearFocus();}catch(Exception ignored){}}
 
     private List<Result> parse(String out){
         List<Result> list=new ArrayList<>();if(out==null)return list;String[] lines=out.split("\\r?\\n");
@@ -74,7 +96,7 @@ public class UniversalSearchActivity extends Activity {
     }
 
     private void openDownload(String url){Intent i=new Intent(this,MainActivity.class);i.putExtra(MainActivity.EXTRA_PREFILL_URL,url);i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);startActivity(i);}
-    private void setBusy(boolean b){searchButton.setEnabled(!b);searchButton.setAlpha(b?.55f:1f);searchButton.setText(b?"جاري البحث…":"⌕  بحث");}
+    private void setBusy(boolean b){searchButton.setEnabled(!b);searchButton.setAlpha(b?.55f:1f);searchButton.setText(b?"...":"بحث");}
     private String formatDuration(long s){return String.format(Locale.US,"%d:%02d",s/60,s%60);}
     private String shortMsg(String s){if(s==null||s.trim().isEmpty())return"خطأ في المحرك";s=s.trim().replace('\n',' ');return s.length()>140?s.substring(0,140)+"…":s;}
     private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
