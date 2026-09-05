@@ -23,7 +23,6 @@ import android.widget.VideoView;
 import androidx.core.content.FileProvider;
 
 import java.io.File;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -35,7 +34,7 @@ public class PublishingActivity extends Activity {
     private Uri galleryUri;
     private EditText title, caption, hashtags;
     private TextView saveState;
-    private Button saveButton;
+    private View saveButton;
     private VideoView preview;
 
     @Override protected void onCreate(Bundle b) {
@@ -196,8 +195,7 @@ public class PublishingActivity extends Activity {
             if (!automatic) toast("الفيديو محفوظ بالفعل ✓");
             return;
         }
-        saveButton.setEnabled(false);
-        saveButton.setAlpha(.55f);
+        if (saveButton != null) { saveButton.setEnabled(false); saveButton.setAlpha(.55f); }
         saveState.setText("جاري الحفظ في Gallery…");
         saveState.setTextColor(Ui.YELLOW);
         io.execute(() -> {
@@ -205,14 +203,14 @@ public class PublishingActivity extends Activity {
                 Uri uri = MediaStoreSaver.saveVideo(this, video);
                 runOnUiThread(() -> {
                     galleryUri = uri;
-                    saveButton.setEnabled(true); saveButton.setAlpha(1f);
+                    if (saveButton != null) { saveButton.setEnabled(true); saveButton.setAlpha(1f); }
                     saveState.setText("✓ محفوظ في Gallery • Movies/DownloadHub");
                     saveState.setTextColor(Ui.GREEN);
                     if (!automatic) toast("تم حفظ الفيديو في الجهاز ✓");
                 });
             } catch (Exception e) {
                 runOnUiThread(() -> {
-                    saveButton.setEnabled(true); saveButton.setAlpha(1f);
+                    if (saveButton != null) { saveButton.setEnabled(true); saveButton.setAlpha(1f); }
                     saveState.setText("تعذر الحفظ: " + safeMessage(e));
                     saveState.setTextColor(Ui.RED);
                     if (!automatic) toast("تعذر حفظ الفيديو");
