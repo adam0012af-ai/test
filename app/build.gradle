@@ -10,8 +10,8 @@ android {
         applicationId 'com.adam.downloadhub'
         minSdk 29
         targetSdk 35
-        versionCode 51
-        versionName '5.1.0'
+        versionCode 60
+        versionName '6.0.0'
     }
 
     buildTypes {
@@ -29,4 +29,5 @@ android {
 
 dependencies {
     implementation 'io.github.junkfood02.youtubedl-android:library:0.18.1'
+    implementation 'io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1'
 }
