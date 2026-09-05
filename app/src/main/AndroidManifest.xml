@@ -17,7 +17,6 @@
         <activity android:name=".SettingsActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".HistoryActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".DownloadsActivity" android:exported="false" android:screenOrientation="portrait" />
-        <activity android:name=".BrowserCaptureActivity" android:exported="false" android:screenOrientation="portrait" />
 
         <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait">
             <intent-filter>
